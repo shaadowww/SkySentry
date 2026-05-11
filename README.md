@@ -29,7 +29,7 @@ shadow_weather_bot/
 
 ```text
 Real-time get actual information about weather in your city.
-Cashing requests in Redis for economy limites.
+Caching requests in Redis for economy limites.
 Fully asynchronous.
 Ability to enable scheduling of weather dispatch every day.
 ```
