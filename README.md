@@ -23,7 +23,7 @@ An asynchronous weather monitoring service. Built on a modern stack with a focus
 - **Database** SQLAlchemy + PostgreSQL (asyncpg)
 - **Cache** Redis
 
-Project Architecture: 
+## Project Architecture: 
 ```text
 shadow_weather_bot/
 ├── bot/                # Command handling and bot logic
