@@ -7,6 +7,14 @@
 
 An asynchronous weather monitoring service. Built on a modern stack with a focus on performance and code cleanliness.
 
+
+## Main Features:
+
+- Real-time weather updates for your city.
+- Request caching in Redis to optimize API limits.
+- Fully asynchronous architecture.
+- Daily weather dispatch scheduling.
+
 ## Technology Stack
 - **Backend** Python 3.13 (Asyncio)
 - **Dependency Manager** Poetry
@@ -15,7 +23,7 @@ An asynchronous weather monitoring service. Built on a modern stack with a focus
 - **Database** SQLAlchemy + PostgreSQL (asyncpg)
 - **Cache** Redis
 
-
+Project Architecture: 
 ```text
 shadow_weather_bot/
 ├── bot/                # Command handling and bot logic
@@ -25,9 +33,3 @@ shadow_weather_bot/
 ├── .env.example        # Configuration template
 └── pyproject.toml      # Project configuration and dependencies
 ```
-## Main Features:
-
-- Real-time weather updates for your city.
-- Request caching in Redis to optimize API limits.
-- Fully asynchronous architecture.
-- Daily weather dispatch scheduling.
