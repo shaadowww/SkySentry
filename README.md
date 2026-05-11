@@ -27,9 +27,7 @@ shadow_weather_bot/
 ```
 ## Main Features:
 
-```text
-Real-time get actual information about weather in your city.
-Caching requests in Redis for economy limites.
-Fully asynchronous.
-Ability to enable scheduling of weather dispatch every day.
-```
+- Real-time weather updates for your city.
+- Request caching in Redis to optimize API limits.
+- Fully asynchronous architecture.
+- Daily weather dispatch scheduling.
