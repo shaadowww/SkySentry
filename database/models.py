@@ -1,3 +1,5 @@
+# Database Tables
+
 from sqlalchemy import ForeignKey, BigInteger, text
 from sqlalchemy.orm import Mapped, mapped_column
 from database.db_engines import Base
@@ -6,6 +8,9 @@ from typing import Annotated
 
 userid_fk = Annotated[int, mapped_column(ForeignKey("users.telegram_id"))]
 int_pk = Annotated[int, mapped_column(primary_key=True)]
+
+
+
 class Users(Base):
     """
     ### General users table to know your users

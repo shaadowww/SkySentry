@@ -1,0 +1,58 @@
+# Schemas For Data Validation before adding to database
+
+from pydantic import BaseModel, Field, ConfigDict
+import datetime
+from typing import Optional
+
+# ` USERS `
+
+class UserBase(BaseModel):
+    username: Optional[str] = Field(None, min_length=1, max_length=32)
+
+class UserCreate(UserBase):
+    
+    telegram_id: int 
+
+class UserRead(UserBase):
+    telegram_id: int
+    created_at: datetime.datetime
+    
+    model_config = ConfigDict(from_attributes=True)
+
+class UserUpdate(UserBase):
+    pass
+
+# ` Schedules `
+
+class ScheduleBase(BaseModel):
+    city: str
+    time: datetime.time
+    timezone: str = "UTC"
+
+class ScheduleCreate(ScheduleBase):
+    user_id: int
+
+class ScheduleRead(ScheduleBase):
+    id: int
+    is_active: bool
+    model_config = ConfigDict(from_attributes=True)
+
+class ScheduleUpdate(ScheduleBase):
+    city: Optional[str] = None
+    time: Optional[datetime.time] = None
+    timezone: Optional[str] = None
+    is_active: Optional[bool] = None
+
+# ` Locations `
+
+class LocationBase(BaseModel):
+    city_name: str
+    latitude: float
+    longitude: float
+
+class LocationCreate(LocationBase):
+    user_id: int
+
+class LocationRead(LocationBase):
+    id: int
+    model_config = ConfigDict(from_attributes=True)
