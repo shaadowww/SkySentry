@@ -1,7 +1,7 @@
 # Database Tables
 
 from sqlalchemy import ForeignKey, BigInteger, text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from database.db_engines import Base
 from datetime import datetime, time
 from typing import Annotated

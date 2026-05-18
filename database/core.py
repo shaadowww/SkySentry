@@ -32,10 +32,7 @@ async def get_user(session: AsyncSession, telegram_id: int) -> Optional[UserRead
 
     user = await session.get(Users, telegram_id)
 
-    if user:
-        return UserRead.model_validate(user)
-    else:
-        return None
+    return UserRead.model_validate(user) if user else None
     
 # `SCHEDULES `
 
