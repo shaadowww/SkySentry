@@ -1,12 +1,11 @@
 # Database Tables
 
-from sqlalchemy import ForeignKey, BigInteger, text
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import ForeignKey, BigInteger, text, String
+from sqlalchemy.orm import Mapped, mapped_column
 from database.db_engines import Base
 from datetime import datetime, time
 from typing import Annotated
 
-userid_fk = Annotated[int, mapped_column(ForeignKey("users.telegram_id"))]
 int_pk = Annotated[int, mapped_column(primary_key=True)]
 
 
@@ -18,7 +17,9 @@ class Users(Base):
     __tablename__ = "users"
 
     telegram_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    username: Mapped[str]
+    username: Mapped[str | None] = mapped_column(
+        String(32)
+    )
     created_at: Mapped[datetime] = mapped_column(
         server_default=text("TIMEZONE ('utc', now())")
     )
@@ -31,7 +32,7 @@ class Schedules(Base):
     __tablename__ = "schedules"
 
     id: Mapped[int_pk]
-    user_id: Mapped[userid_fk]
+    telegram_id: Mapped[int] = mapped_column(ForeignKey("users.telegram_id"))
     city: Mapped[str]
     time: Mapped[time]
     timezone: Mapped[str] = mapped_column(
@@ -48,7 +49,10 @@ class Locations(Base):
     __tablename__ = "locations"
     
     id: Mapped[int_pk]
-    user_id: Mapped[userid_fk]
+    telegram_id: Mapped[int] = mapped_column(
+        ForeignKey("users.telegram_id"),
+        unique=True
+    )
     city_name: Mapped[str]
     latitude: Mapped[float]
     longitude: Mapped[float]

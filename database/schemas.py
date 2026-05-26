@@ -2,15 +2,13 @@
 
 from pydantic import BaseModel, Field, ConfigDict
 import datetime
-from typing import Optional
 
 # ` USERS `
 
 class UserBase(BaseModel):
-    username: Optional[str] = Field(None, min_length=1, max_length=32)
+    username: str | None = Field(None, min_length=1, max_length=32)
 
-class UserCreate(UserBase):
-    
+class UserCreate(UserBase):    
     telegram_id: int 
 
 class UserRead(UserBase):
@@ -30,18 +28,18 @@ class ScheduleBase(BaseModel):
     timezone: str = "UTC"
 
 class ScheduleCreate(ScheduleBase):
-    user_id: int
+    telegram_id: int
 
 class ScheduleRead(ScheduleBase):
     id: int
     is_active: bool
     model_config = ConfigDict(from_attributes=True)
 
-class ScheduleUpdate(ScheduleBase):
-    city: Optional[str] = None
-    time: Optional[datetime.time] = None
-    timezone: Optional[str] = None
-    is_active: Optional[bool] = None
+class ScheduleUpdate(BaseModel):
+    city: str | None = None
+    time: datetime.time | None = None
+    timezone: str | None = None
+    is_active: bool | None = None
 
 # ` Locations `
 
@@ -51,7 +49,7 @@ class LocationBase(BaseModel):
     longitude: float
 
 class LocationCreate(LocationBase):
-    user_id: int
+    telegram_id: int
 
 class LocationRead(LocationBase):
     id: int
