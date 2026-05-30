@@ -2,7 +2,7 @@
 
 from sqlalchemy import ForeignKey, BigInteger, text, String
 from sqlalchemy.orm import Mapped, mapped_column
-from database.db_engines import Base
+from backend.database.db_engines import Base
 from datetime import datetime, time
 from typing import Annotated
 

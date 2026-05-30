@@ -4,14 +4,10 @@ from logging.config import fileConfig
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
-import sys
-from os.path import dirname, abspath
 
-sys.path.insert(0, dirname(dirname(abspath(__file__))))
-
-from database.db_engines import Base
-from database.models import Users, Schedules, Locations
-from config import settings
+from backend.database.db_engines import Base
+from backend.database.models import Users, Schedules, Locations
+from backend.config import settings
 
 from alembic import context
 

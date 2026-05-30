@@ -3,7 +3,7 @@ import logging
 
 from aiogram import Bot, Dispatcher
 
-from config import settings
+from backend.config import settings
 
 from bot.handlers import router
 

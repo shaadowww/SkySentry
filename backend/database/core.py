@@ -2,8 +2,8 @@
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.models import Users, Locations, Schedules
-from database.schemas import UserCreate, UserRead, ScheduleCreate, ScheduleRead, LocationCreate, LocationRead
+from backend.database.models import Users, Locations, Schedules
+from backend.database.schemas import UserCreate, UserRead, ScheduleCreate, ScheduleRead, LocationCreate, LocationRead
 
 # ` USERS ` 
 
@@ -87,8 +87,9 @@ async def get_active_schedules(session: AsyncSession) -> list[ScheduleRead]:
 
 async def set_user_location(session: AsyncSession, loc_schema: LocationCreate) -> LocationRead:
     '''
-    Set Location To User
+    Set or update user location
     '''
+    
     query = (
         select(Locations)
         .where(Locations.telegram_id == loc_schema.telegram_id)
@@ -113,30 +114,26 @@ async def specified_location_users(session: AsyncSession, city_name: str) -> lis
     '''
     Get Users From A Specified City
 
-    *It allow get user from specified city **ONLY!***
+    *It allows get user from specified city **ONLY!***
     '''
+
     query = (
         select(Locations)
         .where(Locations.city_name == city_name)
     )
-
     res = await session.execute(query)
-
     users = res.scalars().all()
-
     return [LocationRead.model_validate(user) for user in users]
 
 async def get_user_location(session: AsyncSession, telegram_id: int) -> LocationRead | None:
     '''
     Get Chosen Location By User
     '''
+
     query = (
         select(Locations)
         .where(Locations.telegram_id == telegram_id)
     )
-
     res = await session.execute(query)
-    
     user_location = res.scalar_one_or_none()
-
     return LocationRead.model_validate(user_location) if user_location else None
