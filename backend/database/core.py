@@ -98,7 +98,7 @@ async def set_user_location(session: AsyncSession, loc_schema: LocationCreate) -
     location = res.scalar_one_or_none()
 
     if location:
-
+        location.city_id = loc_schema.city_id
         location.city_name = loc_schema.city_name
         location.latitude = loc_schema.latitude
         location.longitude = loc_schema.longitude

@@ -1,21 +1,164 @@
+import datetime
+
 import httpx
 
 from pydantic import BaseModel, Field
 
 from fastapi import HTTPException, status
 
-class WeatherResponseBase(BaseModel):
+class CurrentWeatherResponse(BaseModel):
     '''
     Weather Schema for validating weather data
     '''
-    pass
+
+    temperature: float = Field(..., alias="temperature_2m")
+    apparent_temperature: float = Field(..., alias="apparent_temperature")
+    humidity: int = Field(..., alias="relative_humidity_2m")
+    wind_speed: float = Field(..., alias="wind_speed_10m")
+    weather_code: int = Field(..., alias="weather_code")
+    precipitation: float = Field(..., alias="precipitation")
+    cloud_cover: int = Field(..., alias="cloud_cover")
+    is_day: int = Field(..., alias="is_day")
+
+class DailyWeatherResponse(BaseModel):
+    '''
+    Weather Schema for validating weather data for a date
+    '''
+    date: datetime.date = Field(..., alias="time")
+    max_temperature: float = Field(..., alias="temperature_2m_max")
+    min_temperature: float = Field(..., alias="temperature_2m_min")
+    min_apparent_temperature: float = Field(..., alias="apparent_temperature_min")
+    max_apparent_temperature: float = Field(..., alias="apparent_temperature_max")
+    max_wind_speed: float = Field(..., alias="wind_speed_10m_max")
+    min_wind_speed: float = Field(..., alias="wind_speed_10m_min")
+    precipitation_sum: float = Field(..., alias="precipitation_sum")
+    weather_code: int = Field(..., alias="weather_code")
+    
+    
+
+
 
 class WeatherClient:
+    '''
+    Open Meteo API Class
+    '''
 
     BASE_URL = "https://api.open-meteo.com/v1/forecast"
 
     @classmethod
-    async def get_current_weather(cls, latitude: float, longitude: float):
-        ...
-    
+    async def get_current_weather(cls, latitude: float, longitude: float) -> CurrentWeatherResponse:
+        
+        params = {
+            "latitude": latitude,
+            "longitude": longitude,
+            "current": (
+                "temperature_2m,"
+                "apparent_temperature,"
+                "relative_humidity_2m,"
+                "weather_code,"
+                "wind_speed_10m,"
+                "precipitation,"
+                "cloud_cover,"
+                "is_day"
+            ),
+            "timezone": "auto"
+        }
 
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(cls.BASE_URL, params=params, timeout=2.0)
+                response.raise_for_status()
+
+            received_data = response.json()
+            needed_data = received_data.get("current")
+
+            if not needed_data:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="Incomplete data received from weather provider."
+                )
+            
+            return CurrentWeatherResponse.model_validate(needed_data)
+        except httpx.TimeoutException:
+            raise HTTPException(
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                detail="Weather service response timeout."
+            )
+        except httpx.HTTPStatusError as e:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Weather service returned bad status: {e.response.status_code}"
+            )
+        
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Unexpected error in weather service : {str(e)}"
+            )
+
+    
+    @classmethod
+    async def get_weather_for_date(cls, latitude: float, longitude: float, target_date: datetime.date) -> DailyWeatherResponse:
+        date_str = target_date.strftime("%Y-%m-%d")
+        params = {
+            "latitude": latitude,
+            "longitude": longitude,
+            "start_date": date_str,
+            "end_date": date_str,
+            "daily": (
+                "temperature_2m_max,"
+                "temperature_2m_min,"
+                "apparent_temperature_max,"
+                "apparent_temperature_min,"
+                "wind_speed_10m_max,"
+                "wind_speed_10m_min,"
+                "precipitation_sum,"
+                "weather_code"
+            ),
+            "timezone": "auto"
+        }
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(cls.BASE_URL, params=params, timeout=2.0)
+                response.raise_for_status()
+
+            received_data = response.json()
+            needed_data = received_data.get("daily")
+
+            if not needed_data:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="Invalid daily structure from weather provider."
+                )
+            
+            cleaned_data: dict[str, (int, float, datetime.time)] = {
+                "time": needed_data["time"][0],
+                "temperature_2m_max": needed_data["temperature_2m_max"][0],
+                "temperature_2m_min": needed_data["temperature_2m_min"][0],
+                "apparent_temperature_max": needed_data["apparent_temperature_max"][0],
+                "apparent_temperature_min": needed_data["apparent_temperature_min"][0],
+                "wind_speed_10m_max": needed_data["wind_speed_10m_max"][0],
+                "wind_speed_10m_min": needed_data["wind_speed_10m_min"][0],
+                "precipitation_sum": needed_data["precipitation_sum"][0],
+                "weather_code": needed_data["weather_code"][0]
+            }
+            
+            return DailyWeatherResponse.model_validate(cleaned_data)
+        
+        except HTTPException:
+            raise
+        except httpx.TimeoutException:
+            raise HTTPException(
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                detail="Weather service response timeout."
+            )
+        except httpx.HTTPStatusError as e:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Weather service error status: {e.response.status_code}"
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Unexpected weather service error: {str(e)}"
+            )

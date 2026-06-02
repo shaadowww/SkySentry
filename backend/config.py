@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     '''
-    ### Store and validation environment data
+    Store and validation environment data
     '''
     
     DB_HOST: str
@@ -11,8 +11,6 @@ class Settings(BaseSettings):
     DB_USERNAME: str
     DB_PASS: str
     BOT_TOKEN: str
-    REDIS_URL: str
-    WEATHER_API_KEY: str
 
     @property
     def DB_URL(self):

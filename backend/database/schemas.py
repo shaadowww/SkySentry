@@ -45,12 +45,18 @@ class ScheduleUpdate(BaseModel):
 
 class LocationBase(BaseModel):
     city_name: str
-    latitude: float
-    longitude: float
 
 class LocationCreate(LocationBase):
     telegram_id: int
+    city_id: int | None = Field(None, alias="id")
+    latitude: float | None = Field(None)
+    longitude: float | None = Field(None)
 
 class LocationRead(LocationBase):
     id: int
+    telegram_id: int
+    city_id: int
+    latitude: float
+    longitude: float
+
     model_config = ConfigDict(from_attributes=True)

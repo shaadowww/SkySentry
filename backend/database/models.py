@@ -53,6 +53,7 @@ class Locations(Base):
         ForeignKey("users.telegram_id"),
         unique=True
     )
+    city_id: Mapped[int] = mapped_column(BigInteger)
     city_name: Mapped[str]
     latitude: Mapped[float]
     longitude: Mapped[float]
