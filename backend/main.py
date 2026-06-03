@@ -27,7 +27,7 @@ from backend.services import (
     DailyWeatherResponse,
     GeoCodingClient
 )
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 
 app = FastAPI(
     title="SkySentry API",
@@ -37,17 +37,17 @@ app = FastAPI(
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
-    '''
+    """
     Database session Generator
-    '''
+    """
     async with sessionmaker() as session:
         yield session
 
 @app.get('/healthcheck/database/ready', tags=["System"])
 async def healthcheck(session: AsyncSession = Depends(get_session)):
-    '''
+    """
     Healthcheck Database Endpoint
-    '''
+    """
     try:
         await session.execute(text("SELECT 1"))
         return {
@@ -64,9 +64,9 @@ async def healthcheck(session: AsyncSession = Depends(get_session)):
 
 @app.get('/health/weatherapi/ready', tags=["System"])
 async def api_ready():
-    '''
+    """
     Weather API Healthcheck
-    '''
+    """
     try:
         pass # Weather API request
         return {"status": "healthy"}
@@ -80,9 +80,9 @@ async def get_user_endpoint(
     telegram_id: int, 
     session: AsyncSession = Depends(get_session)
     ):
-    '''
+    """
     Get User From A Database
-    '''
+    """
 
     user = await get_user(session, telegram_id)
     
@@ -96,9 +96,9 @@ async def upsert_user_endpoint(
     user_data: UserCreate, 
     session: AsyncSession = Depends(get_session)
     ):
-    '''
+    """
     Create or update a user in the database
-    '''
+    """
     user = await upsert_user(session, user_data)
     return user
 
@@ -111,9 +111,9 @@ async def set_location(
     loc_schema: LocationCreate,
     session: AsyncSession = Depends(get_session)
     ):
-    '''
+    """
     Set User Location
-    '''
+    """
     if loc_schema.latitude is None or loc_schema.longitude is None:
         geo_data = await GeoCodingClient.resolve_city(loc_schema.city_name)
         
@@ -130,9 +130,9 @@ async def get_location(
     telegram_id: int,
     session: AsyncSession = Depends(get_session)
     ):
-    '''
+    """
     Get User Location
-    '''
+    """
     user_location = await get_user_location(session, telegram_id)
 
     if not user_location:
@@ -148,9 +148,9 @@ async def set_user_schedule(
     schedule_schema: ScheduleCreate,
     session: AsyncSession = Depends(get_session)
     ):
-    '''
+    """
     Set User Schedule
-    '''
+    """
     user_schedule = await create_schedule(session, schedule_schema)
     return user_schedule
 
@@ -159,18 +159,18 @@ async def get_user_schedule(
     telegram_id: int,
     session: AsyncSession = Depends(get_session)
     ):
-    '''
+    """
     Get All User Schedules
-    '''
+    """
 
     user_schedule = await get_all_user_schedules(session, telegram_id)
     return user_schedule
 
 @app.get('/api/v1/schedules/active', response_model=list[ScheduleRead], tags=["Schedules"])
 async def active_schedules(session: AsyncSession = Depends(get_session)):
-    '''
+    """
     Get All Active Schedules
-    '''
+    """
 
     schedules = await get_active_schedules(session)
     return schedules
@@ -182,9 +182,9 @@ async def get_users_from_specified_city(
     city_name: str,
     session: AsyncSession = Depends(get_session)
     ):
-    '''
+    """
     Get Users From A Specified City
-    '''
+    """
 
     users = await specified_location_users(session, city_name)
     return users
@@ -196,9 +196,9 @@ async def get_weather_now(
     telegram_id: int,
     session: AsyncSession = Depends(get_session)
     ):
-    '''
+    """
     Get Weather Now For User
-    '''
+    """
 
     location = await get_user_location(session, telegram_id)
 

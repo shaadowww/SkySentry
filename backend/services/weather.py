@@ -7,9 +7,7 @@ from pydantic import BaseModel, Field
 from fastapi import HTTPException, status
 
 class CurrentWeatherResponse(BaseModel):
-    '''
-    Weather Schema for validating weather data
-    '''
+    """Weather Schema for validating weather data"""
 
     temperature: float = Field(..., alias="temperature_2m")
     apparent_temperature: float = Field(..., alias="apparent_temperature")
@@ -21,9 +19,10 @@ class CurrentWeatherResponse(BaseModel):
     is_day: int = Field(..., alias="is_day")
 
 class DailyWeatherResponse(BaseModel):
-    '''
+    """
     Weather Schema for validating weather data for a date
-    '''
+    """
+    
     date: datetime.date = Field(..., alias="time")
     max_temperature: float = Field(..., alias="temperature_2m_max")
     min_temperature: float = Field(..., alias="temperature_2m_min")
@@ -39,9 +38,7 @@ class DailyWeatherResponse(BaseModel):
 
 
 class WeatherClient:
-    '''
-    Open Meteo API Class
-    '''
+    """Open Meteo API Class"""
 
     BASE_URL = "https://api.open-meteo.com/v1/forecast"
 

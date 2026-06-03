@@ -8,9 +8,7 @@ from backend.database.schemas import UserCreate, UserRead, ScheduleCreate, Sched
 # ` USERS ` 
 
 async def upsert_user(session: AsyncSession, user_schema: UserCreate) -> UserRead:
-    '''
-    Creates A User Or Updates An Existing User If They Have Changed Their Name
-    '''
+    """Creates A User Or Updates An Existing User If They Have Changed Their Name"""
 
     user = await session.get(Users, user_schema.telegram_id)
 
@@ -25,9 +23,9 @@ async def upsert_user(session: AsyncSession, user_schema: UserCreate) -> UserRea
     return UserRead.model_validate(user)
 
 async def get_user(session: AsyncSession, telegram_id: int) -> UserRead | None:
-    '''
+    """
     Get A User By ID And Check Is There it
-    '''
+    """
 
     user = await session.get(Users, telegram_id)
 
@@ -36,9 +34,9 @@ async def get_user(session: AsyncSession, telegram_id: int) -> UserRead | None:
 # `SCHEDULES `
 
 async def create_schedule(session: AsyncSession, schedule_schema: ScheduleCreate) -> ScheduleRead:
-    '''
+    """
     Write Down A User Schedule Into Database
-    '''
+    """
 
     schedule = Schedules(**schedule_schema.model_dump())
     session.add(schedule)
@@ -48,9 +46,9 @@ async def create_schedule(session: AsyncSession, schedule_schema: ScheduleCreate
     return ScheduleRead.model_validate(schedule)
 
 async def get_all_user_schedules(session: AsyncSession, telegram_id: int) -> list[ScheduleRead]:
-    '''
+    """
     Get All Schedules User Have
-    '''
+    """
     query = (
         select(Schedules)
         .where(Schedules.telegram_id == telegram_id)
@@ -65,9 +63,9 @@ async def get_all_user_schedules(session: AsyncSession, telegram_id: int) -> lis
 
 
 async def get_active_schedules(session: AsyncSession) -> list[ScheduleRead]:
-    '''
+    """
     Get All Active Schedules (Where `is_active` is `True`)
-    '''
+    """
 
     query = (
         select(Schedules)
@@ -86,9 +84,9 @@ async def get_active_schedules(session: AsyncSession) -> list[ScheduleRead]:
 # ` LOCATIONS `
 
 async def set_user_location(session: AsyncSession, loc_schema: LocationCreate) -> LocationRead:
-    '''
+    """
     Set or update user location
-    '''
+    """
     
     query = (
         select(Locations)
@@ -111,11 +109,11 @@ async def set_user_location(session: AsyncSession, loc_schema: LocationCreate) -
     return LocationRead.model_validate(location)
 
 async def specified_location_users(session: AsyncSession, city_name: str) -> list[LocationRead]:
-    '''
+    """
     Get Users From A Specified City
 
     *It allows get user from specified city **ONLY!***
-    '''
+    """
 
     query = (
         select(Locations)
@@ -126,9 +124,9 @@ async def specified_location_users(session: AsyncSession, city_name: str) -> lis
     return [LocationRead.model_validate(user) for user in users]
 
 async def get_user_location(session: AsyncSession, telegram_id: int) -> LocationRead | None:
-    '''
+    """
     Get Chosen Location By User
-    '''
+    """
 
     query = (
         select(Locations)

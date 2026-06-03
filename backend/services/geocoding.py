@@ -3,9 +3,9 @@ from fastapi import HTTPException, status
 from pydantic import BaseModel, Field
 
 class GeoCodingModel(BaseModel):
-    '''
-    GeoCoding Schema for parsing specified city 
-    '''
+    """
+    GeoCoding Schema for parsing specified city
+    """
     city_id: int = Field(..., alias="id")
     city_name: str = Field(..., alias="name")
     latitude: float = Field(..., alias="latitude")
