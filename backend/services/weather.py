@@ -2,9 +2,10 @@ import datetime
 
 import httpx
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, JsonValue
 
 from fastapi import HTTPException, status
+
 
 class CurrentWeatherResponse(BaseModel):
     """Weather Schema for validating weather data"""
@@ -41,6 +42,36 @@ class WeatherClient:
     """Open Meteo API Class"""
 
     BASE_URL = "https://api.open-meteo.com/v1/forecast"
+    client: httpx.AsyncClient | None = None
+
+    @classmethod
+    async def _send_request(cls, url: str, *, params: dict, timeout: float = 5.0) -> JsonValue:
+        """
+        Send the request asynchronous
+        """
+
+        try:
+            if cls.client and not cls.client.is_closed:
+                response = await cls.client.get(url, params=params, timeout=timeout)
+                response.raise_for_status()
+                return response.json()
+
+            async with httpx.AsyncClient() as backup_client:
+                response = await backup_client.get(url, params=params, timeout=timeout)
+                response.raise_for_status()
+            data = response.json()
+            return data
+        
+        except httpx.TimeoutException:
+            raise HTTPException(
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                detail="Weather service response timeout."
+            )
+        except httpx.HTTPStatusError as e:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Weather service returned bad status: {e.response.status_code}"
+            )
 
     @classmethod
     async def get_current_weather(cls, latitude: float, longitude: float) -> CurrentWeatherResponse:
@@ -62,12 +93,8 @@ class WeatherClient:
         }
 
         try:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(cls.BASE_URL, params=params, timeout=2.0)
-                response.raise_for_status()
-
-            received_data = response.json()
-            needed_data = received_data.get("current")
+            res = await cls._send_request(cls.BASE_URL, params=params)
+            needed_data = res.get("current")
 
             if not needed_data:
                 raise HTTPException(
@@ -76,16 +103,9 @@ class WeatherClient:
                 )
             
             return CurrentWeatherResponse.model_validate(needed_data)
-        except httpx.TimeoutException:
-            raise HTTPException(
-                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-                detail="Weather service response timeout."
-            )
-        except httpx.HTTPStatusError as e:
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"Weather service returned bad status: {e.response.status_code}"
-            )
+        
+        except HTTPException:
+            raise
         
         except Exception as e:
             raise HTTPException(
@@ -115,12 +135,8 @@ class WeatherClient:
             "timezone": "auto"
         }
         try:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(cls.BASE_URL, params=params, timeout=2.0)
-                response.raise_for_status()
-
-            received_data = response.json()
-            needed_data = received_data.get("daily")
+            res = await cls._send_request(cls.BASE_URL, params=params)
+            needed_data = res.get("daily")
 
             if not needed_data:
                 raise HTTPException(
@@ -144,16 +160,7 @@ class WeatherClient:
         
         except HTTPException:
             raise
-        except httpx.TimeoutException:
-            raise HTTPException(
-                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-                detail="Weather service response timeout."
-            )
-        except httpx.HTTPStatusError as e:
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"Weather service error status: {e.response.status_code}"
-            )
+
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

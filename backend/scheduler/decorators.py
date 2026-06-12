@@ -4,7 +4,7 @@ from functools import wraps
 from collections.abc import Callable, Awaitable
 from typing import Any
 
-def get_session(func: Callable[..., Awaitable[Any]]):
+def session_deco(func: Callable[..., Awaitable[Any]]):
     """
     Decorator to automatically inject a database session into the function kwargs.
 

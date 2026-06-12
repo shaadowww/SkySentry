@@ -17,6 +17,8 @@ class GeoCodingClient:
 
     BASE_URL = "https://geocoding-api.open-meteo.com/v1/search"
 
+    client: httpx.AsyncClient | None = None
+    
     @classmethod
     async def resolve_city(cls, city_name: str) -> GeoCodingModel:
         params = {
@@ -26,11 +28,17 @@ class GeoCodingClient:
         }
 
         try:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(cls.BASE_URL, params=params, timeout=3.0)
-                response.raise_for_status()
 
-            received_data = response.json()
+            if cls.client and not cls.client.is_closed:
+                response = await cls.client.get(cls.BASE_URL, params=params, timeout=5)
+                response.raise_for_status()
+                received_data = response.json()
+            else:
+                async with httpx.AsyncClient() as backup_client:
+                    response = await backup_client.get(cls.BASE_URL, params=params, timeout=5)
+                    response.raise_for_status()
+                received_data = response.json()
+                
             results = received_data.get("results")
 
             if not results or len(results) == 0:

@@ -23,12 +23,14 @@ class UserUpdate(UserBase):
 # ` Schedules `
 
 class ScheduleBase(BaseModel):
+    telegram_id: int
     city: str
     time: datetime.time
     timezone: str = "UTC"
+    
 
 class ScheduleCreate(ScheduleBase):
-    telegram_id: int
+    pass
 
 class ScheduleRead(ScheduleBase):
     id: int

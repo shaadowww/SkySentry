@@ -1,4 +1,4 @@
-# Bot Handlers
+# Bot command handlers
 
 import logging
 
@@ -29,3 +29,7 @@ async def welcome(msg: Message):
         text=welcome_text,
         parse_mode="HTML"
     )
+
+@router.message(Command(''))
+async def help(msg: Message):
+    pass
