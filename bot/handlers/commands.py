@@ -31,9 +31,9 @@ async def welcome(msg: Message):
         f"Hi {user_name}!\n\n"
         "⚡️🌤️ <b>SkySentry</b> - Automated weather tracking tool and there's the opportunity make weather schedules for any time and world destination! 🗺️⌚\n\n"
         "Available commands:\n"
-        "\t📍 /set_city\n"
-        "\t⏰ /set_schedule\n"
-        "\t📊 /now\n"
+        "\t📍 /set_city - Setting your city in configuration for weather forecasts\n"
+        "\t⏰ /set_schedule - Setting the weather schedule you prefer\n"
+        "\t📊 /now - Get the weather <b>now</b>\n"
         "\tℹ️ /help — Show guidance"
     )
 

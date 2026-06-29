@@ -93,6 +93,7 @@ class APIClient:
             
     @classmethod
     async def get_location(cls, telegram_id: int) -> dict | None:
+        """Get User Location"""
         try:
             if cls.client and not cls.client.is_closed:
                 response = await cls.client.get(

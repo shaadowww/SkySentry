@@ -8,7 +8,8 @@ BOT_DIR = os.path.dirname(CURRENT_DIR)
 
 
 class WIG:
-    BG_PATH = os.path.join(BOT_DIR, "assets", "images", "sky_bg.png")
+    DAY_BG_PATH = os.path.join(BOT_DIR, "assets", "images", "sky_bg.png")
+    NIGHT_BG_PATH = os.path.join(BOT_DIR, "assets", "images", "night_sky_bg.png")
     FONT_PATH = os.path.join(BOT_DIR, "assets", "fonts", "Montserrat-Regular.ttf")
     FONT_BOLD_PATH = os.path.join(BOT_DIR, "assets", "fonts", "Montserrat-Bold.ttf")
 
@@ -23,11 +24,12 @@ class WIG:
         """Generates Weather Info Card"""
 
         try:
-            img = Image.open(cls.BG_PATH).convert("RGBA").resize((1000,1000))
+            if day_state == "Day":
+                img = Image.open(cls.DAY_BG_PATH).convert("RGBA").resize((1000,1000))
+            else: 
+                img = Image.open(cls.NIGHT_BG_PATH).convert("RGBA").resize((1000,1000))
         except FileNotFoundError:
             img = Image.new("RGBA", (1000, 1000), color="#1e2530")
-
-        draw = ImageDraw.Draw(img)
 
         try:
             font_city = ImageFont.truetype(cls.FONT_PATH, 75)
