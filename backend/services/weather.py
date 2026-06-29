@@ -89,6 +89,7 @@ class WeatherClient:
                 "cloud_cover,"
                 "is_day"
             ),
+            "wind_speed_unit": "ms",
             "timezone": "auto"
         }
 

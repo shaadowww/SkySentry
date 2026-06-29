@@ -1,8 +1,22 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
-def get_cancel_keyboard() -> ReplyKeyboardMarkup:
+def share_location() -> ReplyKeyboardMarkup:
     """
-    Keyboard with cancel button for FSM scenaries
+    Location sharing keyboard
+    """
+
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="📍 Share Location", request_location=True)],
+            [KeyboardButton(text="❌ Cancel")]
+        ],
+        resize_keyboard=True,
+        one_time_keyboard=True
+    )
+
+def cancel_keyboard() -> ReplyKeyboardMarkup:
+    """
+    Cancel Keyboard
     """
 
     return ReplyKeyboardMarkup(

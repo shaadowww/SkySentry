@@ -15,7 +15,8 @@ dependencies = [
     "python-dotenv (>=1.2.2,<2.0.0)",
     "alembic (>=1.18.4,<2.0.0)",
     "apscheduler (>=3.11.2,<4.0.0)",
-    "pytz (>=2026.2,<2027.0)"
+    "pytz (>=2026.2,<2027.0)",
+    "pillow (>=12.2.0,<13.0.0)"
 ]
 
 [tool.poetry]

@@ -24,7 +24,7 @@ router = APIRouter(
     tags=["Weather"]
 )
 
-@router.get("/now/{telegram_id}", response_model=CurrentWeatherResponse)
+@router.get("/now/{telegram_id}", response_model=CurrentWeatherResponse, response_model_by_alias=False)
 async def get_weather_now(
     telegram_id: int,
     session: AsyncSession = Depends(provide_session)
@@ -47,7 +47,7 @@ async def get_weather_now(
     )
     return weather_data
     
-@router.get("/forecast/{telegram_id}", response_model=DailyWeatherResponse)
+@router.get("/forecast/{telegram_id}", response_model=DailyWeatherResponse, response_model_by_alias=False)
 async def get_weather_forecast(
     telegram_id: int,
     date: datetime.date = Query(..., description="(YYYY-MM-DD)"),

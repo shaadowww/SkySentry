@@ -46,8 +46,8 @@ class ScheduleUpdate(BaseModel):
 # ` Locations `
 
 class LocationBase(BaseModel):
-    city_name: str
-
+    city_name: str | None = Field(None)
+    
 class LocationCreate(LocationBase):
     telegram_id: int
     city_id: int | None = Field(None, alias="id")

@@ -27,6 +27,7 @@ async def set_location(
     """
     Set User Location
     """
+
     if loc_schema.latitude is None or loc_schema.longitude is None:
         geo_data = await GeoCodingClient.resolve_city(loc_schema.city_name)
         
@@ -34,6 +35,13 @@ async def set_location(
         loc_schema.latitude = geo_data.latitude
         loc_schema.longitude = geo_data.longitude
         loc_schema.city_name = geo_data.city_name
+
+    if loc_schema.city_name is None:
+        city_name = await GeoCodingClient.resolve_coordinates(loc_schema.latitude, loc_schema.longitude)
+        loc_schema.city_name = city_name
+
+        geo_data = await GeoCodingClient.resolve_city(loc_schema.city_name)
+        loc_schema.city_id = geo_data.city_id
 
     user_location = await set_user_location(session, loc_schema)
     return user_location
