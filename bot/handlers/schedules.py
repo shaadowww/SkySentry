@@ -14,7 +14,8 @@ router = Router()
 
 @router.message(Command('set_schedule'))
 async def set_schedule(msg: Message, state: FSMContext):
-    user_location = await APIClient.get_location(msg.from_user.id)
+    user_id = msg.from_user.id
+    user_location = await APIClient.get_location(user_id)
 
     if not user_location or "error" in user_location:
         await msg.answer(
@@ -56,7 +57,7 @@ async def process_time_input(msg: Message, state: FSMContext):
         await msg.answer(
             "❌ Invalid time format.\n"
             "Please enter time strictly in <b>HH:MM</b> format (e.g., 07:30, 23:15):",
-            reply_markup=get_cancel_keyboard(),
+            reply_markup=cancel_keyboard(),
             parse_mode="HTML"
         )
         return
@@ -75,6 +76,13 @@ async def process_time_input(msg: Message, state: FSMContext):
         time_str,
         timezone="UTC"
     )
+    
+    if not schedule_data:
+        await msg.answer(
+            "❌ Unexpected API Error occured. The schedule not created."
+        )
+        await state.clear()
+        return
 
     await msg.answer(
         f"✅ <b>SkySentry Schedule Active!</b>\n\n"
