@@ -4,7 +4,7 @@ from backend.database.db_engines import sessionmaker
 
 async def provide_session() -> AsyncGenerator[AsyncSession, None]:
     """
-    Database session Generator for FastAPI Depends
+    Database session Generator for FastAPI Depends function
     """
     async with sessionmaker() as session:
         yield session

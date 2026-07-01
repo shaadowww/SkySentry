@@ -37,12 +37,15 @@ WEATHER_STATUS = {
     85: "Slight Snow Shower ❄️",
     86: "Heavy Snow Shower ❄️",
     95: "Storm ⛈️"
-}
+} 
+"""Weather Codes"""
+
 
 daylight = {
-    0: "Night 🌌",
-    1: "Day ☀️"
+    0: "Night",
+    1: "Day"
 }
+"""Define it is day or night"""
 
 @router.message(Command("now"))
 async def check_weather_now(msg: Message):
@@ -88,7 +91,6 @@ async def check_weather_now(msg: Message):
     day_or_night = daylight.get(is_day, "Data about daylight is unavailable.")
 
     cleared_state = state.rsplit(" ", 1)[0]
-    cleared_day_state = day_or_night.rsplit(" ", 1)[0]
     weather_report = (
         f"\n"
         f"Apparent Temperature: <b>{apparent}°C</b>\n"
@@ -103,7 +105,7 @@ async def check_weather_now(msg: Message):
         city=user_location,
         temp=temp,
         weather_state=cleared_state,
-        day_state=cleared_day_state
+        day_state=day_or_night
     )
 
     photo_file = BufferedInputFile(card_buffer.read(), filename="weather_report.png")
