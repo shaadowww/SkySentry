@@ -1,6 +1,6 @@
 # Database Query Functions
-
-from sqlalchemy import select
+import datetime
+from sqlalchemy import select, delete, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend.database.models import Users, Locations, Schedules
 from backend.database.schemas import UserCreate, UserRead, ScheduleCreate, ScheduleRead, LocationCreate, LocationRead
@@ -33,11 +33,25 @@ async def get_user(session: AsyncSession, telegram_id: int) -> UserRead | None:
     
 # `SCHEDULES `
 
-async def create_schedule(session: AsyncSession, schedule_schema: ScheduleCreate) -> ScheduleRead:
+async def create_schedule(session: AsyncSession, schedule_schema: ScheduleCreate) -> ScheduleRead | None:
     """
     Write Down A User Schedule Into Database
     """
+    query = (
+        select(Schedules)
+        .where(
+            Schedules.telegram_id == schedule_schema.telegram_id,
+            Schedules.time == schedule_schema.time
+        )
+    )
 
+    res = await session.execute(query)
+
+    existing_row = res.scalar_one_or_none()
+
+    if existing_row is not None:
+        return None
+    
     schedule = Schedules(**schedule_schema.model_dump())
     session.add(schedule)
 
@@ -78,8 +92,31 @@ async def get_active_schedules(session: AsyncSession) -> list[ScheduleRead]:
 
     return [ScheduleRead.model_validate(sch) for sch in active_schedules]
     
+async def remove_user_schedule(
+        session: AsyncSession, 
+        city: str, 
+        time: datetime.time, 
+        telegram_id: int
+    ) -> bool:
+    """Removes the specified schedule from the database"""
+    
+    # TODO дописать функцию удаления расписания с бд
+    stmt = (
+        delete(Schedules)
+        .where(
+            Schedules.city == city,
+            Schedules.time == time,
+            Schedules.telegram_id == telegram_id
+        )
+        .returning(Schedules.id)
+    )
 
+    res = await session.execute(stmt)
+    deleted_schedules = res.scalars().all()
 
+    await session.commit()
+
+    return len(deleted_schedules) > 0
 
 # ` LOCATIONS `
 

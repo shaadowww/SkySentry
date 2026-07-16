@@ -4,7 +4,6 @@ from aiogram import Router, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, ReplyKeyboardRemove
-from backend.database import LocationRead
 
 from bot.states import SetupStates
 from bot.keyboards import share_location, cancel_keyboard
@@ -33,10 +32,13 @@ async def start_city_setup(msg: Message, state: FSMContext):
 @router.message(SetupStates.waiting_for_city, F.location)
 async def process_location(msg: Message, state: FSMContext):
     """Receives user coordinates (`latitude, longitude`), sends requests to backend and processes results"""
+    assert msg.location is not None
+    assert msg.from_user is not None
 
-    lat = msg.location.latitude
+    lat = msg.location.latitude 
     lon = msg.location.longitude
-    user_id = msg.from_user.id
+
+    user_id = msg.from_user.id 
     user_name = msg.from_user.username
 
     user_created = await APIClient.upsert_user(user_id, user_name)
@@ -90,7 +92,9 @@ async def cancel_city_setup(msg: Message, state: FSMContext):
 @router.message(SetupStates.waiting_for_city, F.text)
 async def process_city_name(msg: Message, state: FSMContext):
     """Receives city names, sends requests to backend and processes results"""
-
+    assert msg.text is not None
+    assert msg.from_user is not None
+    
     city_name = msg.text.strip()
 
     await msg.answer(

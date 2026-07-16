@@ -50,6 +50,8 @@ daylight = {
 @router.message(Command("now"))
 async def check_weather_now(msg: Message):
     """Request for weather now"""
+    assert msg.from_user is not None
+    
     telegram_id = msg.from_user.id
     location = await APIClient.get_location(telegram_id)
 

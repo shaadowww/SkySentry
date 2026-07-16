@@ -1,8 +1,11 @@
 # Backend connection file
 # Requests to Backend
 
+import datetime
+
 import httpx
 import logging
+
 from bot.config import settings
 
 logger = logging.getLogger("bot")
@@ -144,6 +147,10 @@ class APIClient:
 
                 if response.status_code == 200:
                     return response.json()
+                
+                if response.status_code == 400:
+                    return {"error": "schedule already exists"}
+                
                 return None
             
             async with httpx.AsyncClient() as backup_client:
@@ -152,11 +159,86 @@ class APIClient:
                     json=payload,
                     timeout=5.0
                 )
+
+                if response.status_code == 200:
+                    return response.json()
+                return None
             
         except httpx.RequestError as e:
             logger.error(f"Backend connection error while create_schedule executing: {str(e)}")
             return None
         
+    @classmethod
+    async def get_user_schedules(cls, telegram_id: int) -> list[dict] | None:
+        """Get All user_schedules"""
+        try:
+            if cls.client and not cls.client.is_closed:
+                response = await cls.client.get(
+                    f"{settings.BACKEND_URL}/schedules/user/{telegram_id}",
+                    timeout=5.0
+                )
+
+                if response.status_code == 200:
+                    return response.json()
+                elif response.status_code == 404:
+                    return {"error": "not found"}
+                return None
+            
+            async with httpx.AsyncClient() as backup_client:
+                response = await backup_client.get(
+                    f"{settings.BACKEND_URL}/schedules/user/{telegram_id}",
+                    timeout=5.0
+                )
+
+                if response.status_code == 200:
+                    return response.json()
+                elif response.status_code == 404:
+                    return {"error": "not found"}
+                return None
+
+        except httpx.RequestError as e:
+            logger.error(f"Backend connection error while get_user_schedules executing: {str(e)}")
+            return None
+
+    @classmethod
+    async def remove_user_schedule(cls, city: str, time: datetime.time, telegram_id: int) -> bool:
+        """Remove user schedule from the database"""
+
+        time_str = time.isoformat() if hasattr(time, "isoformat") else str(time)
+        query_params = {
+            "city": city,
+            "time": time_str
+        }
+
+        try:
+            if cls.client and not cls.client.is_closed:
+                response = await cls.client.delete(
+                    f"{settings.BACKEND_URL}/schedules/user/{telegram_id}",
+                    params=query_params,
+                    timeout=5.0
+                )
+                
+                resp_content = response.read()
+                if resp_content == False or response.status_code != 200:
+                    return {"error": "schedule not deleted"}
+                return True
+            async with httpx.AsyncClient() as backup_client:
+                response = await backup_client.delete(
+                    f"{settings.BACKEND_URL}/schedules/user/{telegram_id}",
+                    params=query_params,
+                    timeout=5.0
+                )
+
+                resp_content = response.read()
+                if resp_content == False or response.status_code != 200:
+                    return {"error": "schedule not deleted"}
+                return True
+
+        except httpx.RequestError as e:
+            logger.error(f"Backend connection error while remove_user_schedule executing: {str(e)}")
+            return None
+
+
     @classmethod
     async def get_weather_now(cls, telegram_id: int) -> dict | None:
         """Get Weather Now For User"""

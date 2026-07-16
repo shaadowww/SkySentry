@@ -20,8 +20,10 @@ router = Router()
 
 @router.message(Command('start'))
 async def welcome(msg: Message):
-    user_id = msg.from_user.id
-    user_name = msg.from_user.username
+    assert msg.from_user is not None
+    
+    user_id = msg.from_user.id 
+    user_name = msg.from_user.username 
 
     user = await APIClient.upsert_user(user_id, user_name)
     if not user: 

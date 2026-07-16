@@ -7,6 +7,7 @@ from .core import (
     set_user_location,
     specified_location_users,
     get_user_location,
+    remove_user_schedule,
 )
 
 from .db_engines import sessionmaker, engine, Base
