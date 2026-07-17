@@ -1,3 +1,4 @@
+import datetime
 from aiogram.types import (
     ReplyKeyboardMarkup, 
     KeyboardButton, 
@@ -45,7 +46,6 @@ def user_schedules_buttons(schedules_indxs: list[str]) -> InlineKeyboardMarkup:
     according to how many schedules user has"""
     builder = InlineKeyboardBuilder()
 
-
     for index in schedules_indxs:
         builder.button(text=f"🗑️ #{index}", callback_data=f"del_num_{index}")
     
@@ -56,10 +56,10 @@ def user_schedules_buttons(schedules_indxs: list[str]) -> InlineKeyboardMarkup:
     n = len(schedules_indxs)
 
     button_adjust: list[int] = [4] * (n // 4)
+
     if n % 4 > 0:
         button_adjust.append(n % 4)
 
     builder.adjust(*button_adjust, 1)
 
     return builder.as_markup()
-

@@ -170,7 +170,7 @@ class APIClient:
         
     @classmethod
     async def get_user_schedules(cls, telegram_id: int) -> list[dict] | None:
-        """Get All user_schedules"""
+        """Get All User Schedules"""
         try:
             if cls.client and not cls.client.is_closed:
                 response = await cls.client.get(
@@ -262,6 +262,43 @@ class APIClient:
                     timeout=5.0
                 )
 
+                if response.status_code == 200:
+                    return response.json()
+                elif response.status_code == 404:
+                    return {"error": "location_not_set"}
+                return None
+            
+        except httpx.RequestError as e:
+            logger.error(f"Backend connection error while get_weather_now executing: {str(e)}")
+            return None
+    
+    @classmethod
+    async def daily_weather_forecast(cls, telegram_id: int, date_str: str) -> dict | None:
+        query_params = {
+            "date": date_str
+        }
+
+        try:
+            if cls.client and not cls.client.is_closed:
+                response = await cls.client.get(
+                    f"{settings.BACKEND_URL}/weather/forecast/{telegram_id}",
+                    params=query_params,
+                    timeout=5.0
+                )
+                
+                if response.status_code == 200:
+                    return response.json()
+                elif response.status_code == 404:
+                    return {"error": "location_not_set"}
+                return None
+
+            async with httpx.AsyncClient() as backup_client:
+                response = await backup_client.get(
+                    f"{settings.BACKEND_URL}/weather/forecast/{telegram_id}",
+                    params=query_params,
+                    timeout=5.0
+                )
+                
                 if response.status_code == 200:
                     return response.json()
                 elif response.status_code == 404:
