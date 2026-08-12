@@ -6,23 +6,30 @@ from fastapi import (
     status, 
     HTTPException, 
     Depends, 
-    Query
+    Query,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend.services import (
     WeatherClient, 
+    GeoCodingClient,
     CurrentWeatherResponse, 
-    DailyWeatherResponse
+    DailyWeatherResponse,
 )
 from backend.database import (
     get_user_location, 
-    provide_session
+    provide_session,
 )
+from pydantic import BaseModel
 
 router = APIRouter(
     prefix="/api/v1/weather",
     tags=["Weather"]
 )
+
+
+class CityWeatherResponse(BaseModel):
+    city_name: str
+    weather: CurrentWeatherResponse
 
 @router.get("/now/{telegram_id}", response_model=CurrentWeatherResponse, response_model_by_alias=False)
 async def get_weather_now(
@@ -46,6 +53,52 @@ async def get_weather_now(
         longitude=location.longitude
     )
     return weather_data
+
+@router.get("/city/now", response_model=CityWeatherResponse, response_model_by_alias=False)
+async def get_weather_now_by_city(
+    city_name: str | None = Query(None, description="City name"),
+    latitude: float | None = Query(None, description="Latitude"),
+    longitude: float | None = Query(None, description="Longitude"),
+):
+    """Receive the weather information in specified city or coordinates"""
+
+    if city_name is None and (latitude is None or longitude is None):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Either 'city_name' or both 'latitude' and 'longitude' must be provided."
+        )
+
+    if city_name is not None:
+        geo_data = await GeoCodingClient.resolve_city(city_name)
+        if geo_data is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="City not found"
+            )
+        
+        latitude = geo_data.latitude
+        longitude = geo_data.longitude
+    else:
+        city_name = await GeoCodingClient.resolve_coordinates(
+            latitude=latitude,
+            longitude=longitude,
+        )
+    
+    weather_data = await WeatherClient.get_current_weather(
+        latitude=latitude,
+        longitude=longitude,
+    )
+
+    if not weather_data or weather_data.temperature is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Weather data unavailable for specified location"
+        )
+
+    return {
+        "city_name": city_name,
+        "weather": weather_data
+    }
     
 @router.get("/forecast/{telegram_id}", response_model=DailyWeatherResponse, response_model_by_alias=False)
 async def get_weather_forecast(

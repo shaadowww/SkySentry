@@ -36,11 +36,6 @@ def cancel_keyboard() -> ReplyKeyboardMarkup:
         one_time_keyboard=True
     )
 
-schedule_update = InlineKeyboardMarkup(inline_keyboard=[
-    [InlineKeyboardButton(text="Add Schedule", callback_data="add")],
-    [InlineKeyboardButton(text="Remove Schedule", callback_data="remove")]
-])
-
 def user_schedules_buttons(schedules_indxs: list[str]) -> InlineKeyboardMarkup:
     """Reply Markup while `remove schedule`
     according to how many schedules user has"""
@@ -51,8 +46,6 @@ def user_schedules_buttons(schedules_indxs: list[str]) -> InlineKeyboardMarkup:
     
     builder.button(text="❌ Cancel", callback_data="schedule_delete_cancel")
 
-    # TODO сделать приятное отображение кнопок расписаний
-
     n = len(schedules_indxs)
 
     button_adjust: list[int] = [4] * (n // 4)
@@ -61,5 +54,22 @@ def user_schedules_buttons(schedules_indxs: list[str]) -> InlineKeyboardMarkup:
         button_adjust.append(n % 4)
 
     builder.adjust(*button_adjust, 1)
+
+    return builder.as_markup()
+
+def settings_output(*, has_city: bool = True, has_schedules: bool = True) -> InlineKeyboardMarkup:
+    """Attractive keyboard for `settings` command"""
+
+    builder = InlineKeyboardBuilder()
+    city_text = "🗺 Change City" if has_city else "🗺️ Set City"
+    builder.button(text=city_text, callback_data="change_city")
+
+    if has_schedules:
+        builder.button(text="\t", callback_data="  ")
+        builder.button(text="➕ Add Schedule", callback_data="add_schedule")
+        builder.button(text="➖ Remove Schedule", callback_data="remove_schedule")
+        builder.adjust(1, 1, 2)
+    else:
+        builder.button(text="⌚️ Set Schedule", callback_data="add_schedule")
 
     return builder.as_markup()

@@ -240,7 +240,7 @@ class APIClient:
 
 
     @classmethod
-    async def get_weather_now(cls, telegram_id: int) -> dict | None:
+    async def get_weather_now(cls, telegram_id: int, ) -> dict | None:
         """Get Weather Now For User"""
 
         try:
@@ -271,6 +271,63 @@ class APIClient:
         except httpx.RequestError as e:
             logger.error(f"Backend connection error while get_weather_now executing: {str(e)}")
             return None
+
+    @classmethod
+    async def get_weather_now_by_city_or_coordinates(
+        cls,
+        city_name: str | None = None,
+        latitude: float | None = None,
+        longitude: float | None = None,
+    ) -> dict | None:
+        """Receive the weather information in specified city or coordinates"""
+
+        raw_params = {
+            "city_name": city_name,
+            "latitude": latitude,
+            "longitude": longitude,
+        }
+
+        params = {
+            k: v for k, v in raw_params.items()
+            if v is not None and v != ""
+        }
+
+
+        url = f"{settings.BACKEND_URL}/weather/city/now"
+        try:
+            if cls.client and not cls.client.is_closed:
+                response = await cls.client.get(
+                    url,
+                    timeout=5.0,
+                    params=params,
+                )
+
+                if response.status_code == 200:
+                    return response.json()
+                elif response.status_code == 404:
+                    return {"error": "city_not_found"}
+                return None
+            
+            async with httpx.AsyncClient() as backup_client:
+                response = await backup_client.get(
+                    url,
+                    timeout=5.0,
+                    params=params,
+                )
+
+                if response.status_code == 200:
+                    return response.json()
+                elif response.status_code == 404:
+                    return {"error": "city_not_found"}
+                return None
+            
+        except httpx.RequestError as e:
+            logger.error(f"Backend connection error while get_weather_now executing: {str(e)}")
+            return None
+        except Exception as e:
+            logger.error(f"Error fetching weather by city/coords: {e}")
+            return None
+        
     
     @classmethod
     async def daily_weather_forecast(cls, telegram_id: int, date_str: str) -> dict | None:

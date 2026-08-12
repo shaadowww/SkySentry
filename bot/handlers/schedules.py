@@ -13,98 +13,18 @@ from bot.api.client import APIClient
 
 router = Router()
 
-@router.message(Command('set_schedule'))
-async def set_schedule(msg: Message, state: FSMContext):
-    assert msg.from_user is not None
+async def _initiate_schedule_create(target_message: Message, state: FSMContext, user_id: int):
+    """Internal helper for creating schedules"""
+    ulocation = await APIClient.get_location(user_id)
 
-    user_id = msg.from_user.id 
-    user_location = await APIClient.get_location(user_id)
-
-    if user_location is None or "error" in user_location:
-        await msg.answer(
+    if ulocation is None or "error" in ulocation:
+        await target_message.answer(
             "⚠️ You have not configured your city yet!\n"
             "Please use the <b>/set_city</b> command first before setting up a schedule",
             parse_mode="HTML"
         )
         return
 
-    city_name = user_location.get("city_name")
-    latitude = user_location.get("latitude")
-    longitude = user_location.get("longitude")
-
-    await state.update_data(
-        city=city_name,
-        user_latitude=latitude,
-        user_longitude=longitude
-    )
-
-    await state.set_state(SetupStates.waiting_for_time)
-
-    await msg.answer(
-        f"📍 City detected: <b>{city_name}</b>.\n\n"
-        f"Please enter the time you want to receive daily weather updates "
-        f"in <b>HH:MM</b> format (24-hour clock, e.g., 08:00 or 22:30):",
-        reply_markup=cancel_keyboard(),
-        parse_mode="HTML"
-    )
-
-@router.message(Command('all_schedules'))
-async def all_schedules(msg: Message, state: FSMContext):
-    assert msg.from_user is not None
-
-    userid = msg.from_user.id
-
-    user_schedules: list[dict] | None = await APIClient.get_user_schedules(userid)
-
-    if user_schedules is None or len(user_schedules) == 0:
-        await msg.answer(
-            "⚠️ You have no any schedule."
-        )
-        return
-
-    output: str = "Here's your schedules:\n\n"
-    schedules_list: str = ""
-    user_schedule_data = {}
-    for ind, schedule in enumerate(user_schedules):
-        city = schedule.get("city")
-        time: datetime.time = schedule.get("time")
-
-        result = (
-        f"<b>Schedule</b> #{ind + 1}\n"
-        f"- City: <b>{city}</b>\n"
-        f"- Time: <code>{time}</code> everyday\n\n"
-    )
-        time_str = time.strftime("%H:%M") if hasattr(time, "strftime") else str(time)[:5]
-        user_schedule_data[f"{ind + 1}"] = {"city": city, "time": time_str}
-        output += result
-        schedules_list += result
-
-    await state.update_data(
-        us_schedule_data=user_schedule_data,
-        all_schedules_result=schedules_list
-    )
-    await msg.answer(
-        output, 
-        parse_mode="HTML",
-        reply_markup=schedule_update
-    )
-
-@router.callback_query(F.data == "add")
-async def schedule_add(callback: CallbackQuery, state: FSMContext):
-    """Schedule adding Callback-Query Handler"""
-
-    await callback.answer()
-
-    ulocation = await APIClient.get_location(callback.from_user.id)
-
-    if ulocation is None or "error" in ulocation:
-        await callback.message.answer(
-            "⚠️ You haven't configured your city yet!\n"
-            "Please use the <b>/set_city</b> command first before setting up a schedule",
-            parse_mode="HTML"
-        )
-        return
-    
     city_name = ulocation.get("city_name")
     latitude = ulocation.get("latitude")
     longitude = ulocation.get("longitude")
@@ -114,9 +34,10 @@ async def schedule_add(callback: CallbackQuery, state: FSMContext):
         user_latitude=latitude,
         user_longitude=longitude
     )
+
     await state.set_state(SetupStates.waiting_for_time)
 
-    await callback.message.answer(
+    await target_message.answer(
         f"📍 City detected: <b>{city_name}</b>.\n\n"
         f"Please enter the time you want to receive daily weather updates "
         f"in <b>HH:MM</b> format (24-hour clock, e.g., 08:00 or 22:30):",
@@ -124,7 +45,23 @@ async def schedule_add(callback: CallbackQuery, state: FSMContext):
         parse_mode="HTML"
     )
 
-@router.callback_query(F.data == "remove")
+@router.message(Command('set_schedule'))
+async def set_schedule(msg: Message, state: FSMContext):
+    """Create Schedule Handler"""
+    assert msg.from_user is not None
+
+    await _initiate_schedule_create(msg, state, msg.from_user.id)
+
+@router.callback_query(F.data == "add_schedule")
+async def schedule_add(callback: CallbackQuery, state: FSMContext):
+    """Schedule adding Callback-Query Handler"""
+
+    await callback.answer()
+    await callback.message.delete()
+
+    await _initiate_schedule_create(callback.message, state, callback.from_user.id)
+
+@router.callback_query(F.data == "remove_schedule")
 async def remove_schedule_callback(callback: CallbackQuery, state: FSMContext):
     """Schedule remove Callback-Query Handler"""
     await callback.answer()
@@ -200,10 +137,7 @@ async def remove_schedule_cancel(callback: CallbackQuery, state: FSMContext):
     """Remove Schedule Cancel Callback Query"""
     await callback.answer()
     await state.clear()
-    await callback.message.answer(
-        "Schedule remove cancelled.",
-        reply_markup=ReplyKeyboardRemove()
-    )
+    await callback.message.answer("Schedule remove cancelled.")
 
 @router.message(SetupStates.waiting_for_time, F.text)
 async def process_time_input(msg: Message, state: FSMContext):
@@ -258,7 +192,7 @@ async def process_time_input(msg: Message, state: FSMContext):
     await msg.answer(
         f"✅ <b>SkySentry Schedule Active!</b>\n\n"
         f"🗺️ Destination: <b>{city_name}</b>\n"
-        f"⏰ Broadcast Time: <b>{time_str} UTC</b>\n\n"
+        f"⏰ Broadcast Time: <b>{time_str} {user_timezone}</b>\n\n"
         f"You will now automatically receive weather forecasts at this exact time everyday.",
         parse_mode="HTML"
     )

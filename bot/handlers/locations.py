@@ -3,7 +3,7 @@
 from aiogram import Router, F
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message, ReplyKeyboardRemove
+from aiogram.types import CallbackQuery, Message, ReplyKeyboardRemove
 
 from bot.states import SetupStates
 from bot.keyboards import share_location, cancel_keyboard
@@ -11,23 +11,28 @@ from bot.api.client import APIClient
 
 router = Router()
 
-@router.message(Command('set_city'))
-async def start_city_setup(msg: Message, state: FSMContext):
-    """Starts asking city state"""
-    await state.set_state(
-        SetupStates.waiting_for_city
-    )
+async def _initiate_city_setup(target_message: Message, state: FSMContext):
+    """Internal helper for initialize the change the city"""
+
+    await state.set_state(SetupStates.waiting_for_city)
 
     city_setup_text = (
-        "Please enter your city name (e.g., Odesa, London)\n"\
-        "also you can share your location via Telegram GeoPoint sending\n"\
-        "or use \'Share Location\' button"
+        "Please enter your city name <b>(e.g., Odesa, London)</b>\n"\
+        "<i>Also you can share your location via <b>Telegram GeoPoint</b> sending</i>\n"\
+        "or use \'<b>Share Location</b>\' button"
     )
 
-    await msg.answer(
+    await target_message.answer(
         text=city_setup_text,
         reply_markup=share_location()
     )
+
+
+
+@router.message(Command('set_city'))
+async def start_city_setup(msg: Message, state: FSMContext):
+    """Starts asking city state"""
+    await _initiate_city_setup(msg, state)
 
 @router.message(SetupStates.waiting_for_city, F.location)
 async def process_location(msg: Message, state: FSMContext):
@@ -140,3 +145,11 @@ async def process_city_name(msg: Message, state: FSMContext):
     )
 
     await state.clear()
+
+@router.callback_query(F.data == "change_city")
+async def change_city_callback(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+
+    await callback.message.delete()
+
+    await _initiate_city_setup(callback.message, state)

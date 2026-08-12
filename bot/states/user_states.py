@@ -4,3 +4,4 @@ class SetupStates(StatesGroup):
     waiting_for_city = State()
     waiting_for_time = State()
     delete_schedule = State()
+    weather_by_city = State()

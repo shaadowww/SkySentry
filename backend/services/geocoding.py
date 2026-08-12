@@ -22,6 +22,8 @@ class GeoCodingClient:
     
     @classmethod
     async def resolve_city(cls, city_name: str) -> GeoCodingModel:
+        """Open Meteo Geocoding API to transform the city name to coordinates"""
+        
         params = {
             "name": city_name,
             "count": 1,
@@ -66,6 +68,8 @@ class GeoCodingClient:
     
     @classmethod
     async def resolve_coordinates(cls, latitude: float, longitude: float) -> str:
+        """Open Street Map API To Resolve the coordinates to transform the coordinates to city name"""
+
         params = {
             "lat": latitude,
             "lon": longitude,

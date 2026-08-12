@@ -1,7 +1,7 @@
 # Bot Weather Handler
 import datetime
-from aiogram import Router
-from aiogram.types import BufferedInputFile, CallbackQuery
+from aiogram import Router, F
+from aiogram.types import BufferedInputFile, CallbackQuery, ReplyKeyboardRemove
 from aiogram.filters import Command
 from aiogram.types import Message
 from aiogram_calendar import SimpleCalendar, SimpleCalendarCallback
@@ -9,6 +9,8 @@ from aiogram.fsm.context import FSMContext
 
 from bot.api.client import APIClient
 from bot.utils.image_generator import WIG
+from bot.keyboards import share_location
+from bot.states import *
 
 
 router = Router()
@@ -238,6 +240,210 @@ async def process_simple_calendar(callback: CallbackQuery, callback_data: Simple
     await callback.message.answer_photo(
         photo=photo_file,
         caption=weather_answer,
+        parse_mode="HTML"
+    )
+
+    await state.clear()
+
+@router.message(Command('city_weather'))
+async def weather_city_now(msg: Message, state: FSMContext): 
+    waiting_city_name_text = (
+        "⌨️ Please enter your city name <b>(e.g., Odesa, London)</b>\n"\
+        "<i>🌍 Also you can share your location via <b>Telegram GeoPoint</b> sending</i>\n"
+    )
+    await state.set_state(SetupStates.weather_by_city)
+
+    await msg.answer(
+        waiting_city_name_text,
+        parse_mode="HTML",
+        reply_markup=share_location()
+    )
+
+@router.message(SetupStates.weather_by_city, F.text == "❌ Cancel")
+async def weather_city_request_cancel(msg: Message, state: FSMContext):
+    """Cancel the weather for city request operation"""
+
+    await state.clear()
+    await msg.reply(
+        "Weather for city request cancelled.",
+        reply_markup=ReplyKeyboardRemove()
+    )
+
+@router.message(SetupStates.weather_by_city, F.text)
+async def process_weather_for_city_request(msg: Message, state: FSMContext):
+    """Weather for city request by receiving text name"""
+    assert msg.text is not None
+    assert msg.from_user is not None
+
+    city_name = msg.text.strip()
+
+    await msg.answer(
+        "Processing city data with SkySentry API...", 
+        reply_markup=ReplyKeyboardRemove()
+    )
+
+    user_created = await APIClient.upsert_user(msg.from_user.id, msg.from_user.username)
+    if not user_created:
+        await msg.answer(
+            "🚨 SkySentry API Error. Cannot register user. Try again later."
+        )
+        await state.clear()
+        return
+
+    weather_data = await APIClient.get_weather_now_by_city_or_coordinates(city_name=city_name)
+
+    if not weather_data:
+        await msg.answer("🚨 Could not obtain weather data.")
+        await state.clear()
+        return
+    
+    if weather_data.get("error") == "city_not_found":
+        await msg.answer(
+            f"❌ City <b>{city_name}</b> was not found.\n"
+            "Please check the spelling and try again:",
+            parse_mode="HTML"
+        )
+        return
+
+    city_name: str = weather_data.get("city_name", "Unknown city")
+    weather_info: dict = weather_data.get("weather", {})
+
+    temp = weather_info.get("temperature")
+
+    if temp is None:
+            await msg.answer(
+                f"❌ Could not obtain valid weather data for <b>{city_name}</b>. Please check the city name.",
+                parse_mode="HTML"
+            )
+            await state.clear()
+            return
+
+    
+    apparent = weather_info.get("apparent_temperature")
+    humidity = weather_info.get("humidity")
+    wind = weather_info.get("wind_speed")
+    weather_code = weather_info.get("weather_code", 0)
+    precipitation = weather_info.get("precipitation")
+    cloud_cover = weather_info.get("cloud_cover")
+    is_day = weather_info.get("is_day")
+
+    weather_state = WEATHER_STATUS.get(weather_code, "Data about precipitation is unavailable.")
+    day_or_night = daylight.get(is_day, "Data about daylight is unavailable.")
+
+    cleared_state = weather_state.rsplit(" ", 1)[0]
+    weather_report = (
+        f"\n\n"
+        f"🌡️ Apparent Temperature: <b>{apparent}°C</b>\n"
+        f"🫧 Humidity: {humidity}%\n"
+        f"🍃 Wind Speed: {wind} m/s \n"
+        f"💦 Precipitation: <b>{precipitation} mm</b>\n"
+        f"☁️ Cloud Cover: <b>{cloud_cover}%</b>\n"
+    )
+
+    card_buffer = WIG.generate_weather_card(
+        city=city_name.capitalize(),
+        temp=temp,
+        weather_state=cleared_state,
+        day_state=day_or_night
+    )
+
+    photo_file = BufferedInputFile(card_buffer.read(), filename="weather_report.png")
+        
+    await msg.answer_photo(
+        photo=photo_file,
+        caption=weather_report,
+        parse_mode="HTML"
+    )
+
+    await state.clear()
+
+@router.message(SetupStates.weather_by_city, F.location)
+async def process_weather_for_city_request_by_location(msg: Message, state: FSMContext):
+    """Weather for city request by receiving coordinates"""
+
+    assert msg.location is not None
+    assert msg.from_user is not None
+
+    latitude = msg.location.latitude
+    longitude = msg.location.longitude
+
+    await msg.answer(
+        "Processing city data with SkySentry API...", 
+        reply_markup=ReplyKeyboardRemove()
+    )
+
+    user_created = await APIClient.upsert_user(msg.from_user.id, msg.from_user.username)
+    if not user_created:
+        await msg.answer(
+            "🚨 SkySentry API Error. Cannot register user. Try again later."
+        )
+        await state.clear()
+        return
+
+    weather_data = await APIClient.get_weather_now_by_city_or_coordinates(
+        latitude=latitude,
+        longitude=longitude,
+    )
+
+    if not weather_data:
+        await msg.answer("🚨 Could not obtain weather data.")
+        await state.clear()
+        return
+
+    if weather_data.get("error") == "city_not_found":
+        await msg.answer(
+            f"❌ City by <b>latitude: {latitude}</b> | <b>longitude: {longitude}</b> was not found.\n" \
+            "Please check the spelling and try again:",
+            parse_mode="HTML"
+        )
+        return
+
+    city_name: str = weather_data.get("city_name", "Unknown city")
+    weather_info: dict = weather_data.get("weather", {})
+
+    temp = weather_info.get("temperature")
+
+    if temp is None:
+        await msg.answer(
+            f"❌ Could not obtain valid weather data for <b>{city_name}</b>. Please check the city name.",
+            parse_mode="HTML"
+        )
+        await state.clear()
+        return
+
+    apparent = weather_info.get("apparent_temperature")
+    humidity = weather_info.get("humidity")
+    wind = weather_info.get("wind_speed")
+    weather_code = weather_info.get("weather_code", 0)
+    precipitation = weather_info.get("precipitation")
+    cloud_cover = weather_info.get("cloud_cover")
+    is_day = weather_info.get("is_day")
+
+    weather_state = WEATHER_STATUS.get(weather_code, "Data about precipitation is unavailable.")
+    day_or_night = daylight.get(is_day, "Data about daylight is unavailable.")
+
+    cleared_state = weather_state.rsplit(" ", 1)[0]
+    weather_report = (
+        f"\n\n"
+        f"🌡️ Apparent Temperature: <b>{apparent}°C</b>\n"
+        f"🫧 Humidity: {humidity}%\n"
+        f"🍃 Wind Speed: {wind} m/s \n"
+        f"💦 Precipitation: <b>{precipitation} mm</b>\n"
+        f"☁️ Cloud Cover: <b>{cloud_cover}%</b>\n"
+    )
+
+    card_buffer = WIG.generate_weather_card(
+        city=city_name.capitalize(),
+        temp=temp,
+        weather_state=cleared_state,
+        day_state=day_or_night
+    )
+
+    photo_file = BufferedInputFile(card_buffer.read(), filename="weather_report.png")
+        
+    await msg.answer_photo(
+        photo=photo_file,
+        caption=weather_report,
         parse_mode="HTML"
     )
 
