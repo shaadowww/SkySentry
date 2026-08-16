@@ -1,7 +1,12 @@
 # Bot Weather Handler
 import datetime
 from aiogram import Router, F
-from aiogram.types import BufferedInputFile, CallbackQuery, ReplyKeyboardRemove
+from aiogram.types import (
+    BufferedInputFile, 
+    CallbackQuery, 
+    ReplyKeyboardRemove,
+    InputMediaPhoto,
+)
 from aiogram.filters import Command
 from aiogram.types import Message
 from aiogram_calendar import SimpleCalendar, SimpleCalendarCallback
@@ -10,7 +15,15 @@ from aiogram.fsm.context import FSMContext
 from bot.api.client import APIClient
 from bot.utils.image_generator import WIG
 from bot.keyboards import share_location
+from bot.keyboards.forecast_kb import (
+    RangeSelectCallback,
+    PageNavCallback,
+    get_range_selection_keyboard,
+    get_forecast_navigation_keyboard,
+)
 from bot.states import *
+
+from io import BytesIO
 
 
 router = Router()
@@ -51,6 +64,42 @@ daylight = {
     1: "Day"
 }
 """Defining it is day or night"""
+
+def _generate_day_card_and_caption(city_name: str, day_data: dict) -> tuple[BytesIO, str]:
+    """Generate a day card and output caption for user"""
+
+    date_obj = datetime.date.fromisoformat(day_data["date"])
+    formatted_date = date_obj.strftime("%A, %d, %B")
+
+    min_temp = day_data["min_temp"]
+    max_temp = day_data["max_temp"]
+    min_app = day_data.get("min_apparent", min_temp)
+    max_app = day_data.get("max_apparent", max_temp)
+    wind = day_data["wind_speed"]
+    precipitation = day_data["precipitation"]
+    weather_code = day_data["weather_code"]
+
+    weather_desc = WEATHER_STATUS.get(weather_code, "Cloudy ☁️")
+    cleared_state = weather_desc.rsplit(" ", 1)[0]
+
+    caption = (
+        f"📍 <b>{city_name.capitalize()}</b> | 📅 <b>{formatted_date}</b>\n\n"
+        f"🌥️ Weather: <b>{weather_desc}</b>\n"
+        f"🌡️ Temperature: <code>{min_temp}°C ... {max_temp}°C</code>\n"
+        f"🌡️ Feels like: <code>{min_app}°C ... {max_app}°C</code>\n"
+        f"🍃 Max wind speed: <code>{wind} м/с</code>\n"
+        f"💦 Precipitation: <b>{precipitation} мм</b>\n"
+    )
+
+    card_buffer = WIG.generate_daily_weather_card(
+        city=city_name.capitalize(),
+        date_text=formatted_date,
+        min_temp=min_temp,
+        max_temp=max_temp,
+        weather_state=cleared_state
+    )
+
+    return card_buffer, caption
 
 @router.message(Command("now"))
 async def check_weather_now(msg: Message):
@@ -448,3 +497,85 @@ async def process_weather_for_city_request_by_location(msg: Message, state: FSMC
     )
 
     await state.clear()
+
+@router.message(Command("forecast_range"))
+async def start_forecast_range(msg: Message):
+    """Choosing forecast range"""
+
+    await msg.answer(
+        "🌡️ <b>Weather forecast</b>\n"
+        "Select the period you want to get an interactive forecast for:",
+        reply_markup=get_range_selection_keyboard(),
+        parse_mode="HTML"
+    )
+
+@router.callback_query(RangeSelectCallback.filter())
+async def process_range_selected(callback: CallbackQuery, callback_data: RangeSelectCallback, state: FSMContext):
+    await callback.answer("Meteodata is downloading... ⏳")
+    
+    days = callback_data.days
+    data = await APIClient.get_forecast_range(telegram_id=callback.from_user.id, days=days)
+
+    if not data or "forecast" not in data or not data["forecast"]:
+        await callback.message.edit_text(
+            "⚠️ Failed to get forecast. Make sure your city is set through /set_city."
+        )
+        return
+
+    forecast_list = data["forecast"]
+    city_name = data.get("city_name", "Unknown Location")
+
+    await state.update_data(
+        forecast_city=city_name,
+        forecast_list=forecast_list,
+        total_days=len(forecast_list)
+    )
+
+    start_index = 0
+    card_buffer, caption = _generate_day_card_and_caption(city_name, forecast_list[start_index])
+    photo_file = BufferedInputFile(card_buffer.read(), filename="forecast_0.png")
+
+    await callback.message.delete()
+    await callback.message.answer_photo(
+        photo=photo_file,
+        caption=caption,
+        reply_markup=get_forecast_navigation_keyboard(start_index, len(forecast_list)),
+        parse_mode="HTML"
+    )
+
+
+@router.callback_query(PageNavCallback.filter())
+async def process_forecast_page_nav(callback: CallbackQuery, callback_data: PageNavCallback, state: FSMContext):
+    target_index = callback_data.index
+    fsm_data = await state.get_data()
+
+    city_name = fsm_data.get("forecast_city")
+    forecast_list = fsm_data.get("forecast_list")
+    total_days = fsm_data.get("total_days")
+
+    if not forecast_list or target_index >= total_days or target_index < 0:
+        await callback.answer("⚠️ Forecast session has expired. Call /forecast again.", show_alert=True)
+        return
+
+    await callback.answer()
+
+    card_buffer, caption = _generate_day_card_and_caption(city_name, forecast_list[target_index])
+    photo_file = BufferedInputFile(card_buffer.read(), filename=f"forecast_{target_index}.png")
+
+    media = InputMediaPhoto(media=photo_file, caption=caption, parse_mode="HTML")
+    
+    await callback.message.edit_media(
+        media=media,
+        reply_markup=get_forecast_navigation_keyboard(target_index, total_days)
+    )
+
+@router.callback_query(F.data == "ignore")
+async def process_ignore_button(callback: CallbackQuery):
+    await callback.answer()
+
+
+@router.callback_query(F.data == "cancel_forecast")
+async def process_cancel_forecast(callback: CallbackQuery, state: FSMContext):
+    await state.clear()
+    await callback.answer("The forecast is closed")
+    await callback.message.delete()

@@ -365,3 +365,24 @@ class APIClient:
         except httpx.RequestError as e:
             logger.error(f"Backend connection error while get_weather_now executing: {str(e)}")
             return None
+
+    @classmethod
+    async def get_forecast_range(cls, telegram_id: int, days: int = 7) -> dict | None:
+        """Receive forecast for a range of days"""
+
+        url = f"{settings.BACKEND_URL}/weather/forecast/range/{telegram_id}"
+        params = {"days": days}
+
+        try:
+            if cls.client and not cls.client.is_closed:
+                response = await cls.client.get(url, params=params, timeout=5.0)
+                return response.json() if response.status_code == 200 else None
+
+            async with httpx.AsyncClient() as backup_client:
+                response = await backup_client.get(url, params=params, timeout=5.0)
+                return response.json() if response.status_code == 200 else None
+
+        except Exception as e:
+            logger.error(f"Error fetching forecast range: {e}")
+
+        return None

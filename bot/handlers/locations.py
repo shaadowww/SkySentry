@@ -24,7 +24,8 @@ async def _initiate_city_setup(target_message: Message, state: FSMContext):
 
     await target_message.answer(
         text=city_setup_text,
-        reply_markup=share_location()
+        parse_mode="HTML",
+        reply_markup=share_location(),
     )
 
 

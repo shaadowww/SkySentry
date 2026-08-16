@@ -116,7 +116,12 @@ class WeatherClient:
 
     
     @classmethod
-    async def get_weather_for_date(cls, latitude: float, longitude: float, target_date: datetime.date) -> DailyWeatherResponse:
+    async def get_weather_for_date(
+        cls, 
+        latitude: float, 
+        longitude: float, 
+        target_date: datetime.date
+    ) -> DailyWeatherResponse:
         date_str = target_date.strftime("%Y-%m-%d")
         params = {
             "latitude": latitude,
@@ -162,6 +167,66 @@ class WeatherClient:
         except HTTPException:
             raise
 
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Unexpected weather service error: {str(e)}"
+            )
+
+    @classmethod
+    async def get_daily_forecast_range(
+        cls,
+        latitude: float,
+        longitude: float,
+        days: int,
+    ) -> list[dict]:
+        daily_fields = ",".join([
+            "temperature_2m_max",
+            "temperature_2m_min",
+            "apparent_temperature_max",
+            "apparent_temperature_min",
+            "weather_code",
+            "precipitation_sum",
+            "wind_speed_10m_max"
+        ])
+        
+        params = {
+            "latitude": latitude,
+            "longitude": longitude,
+            "daily": daily_fields,
+            "wind_speed_unit": "ms",
+            "timezone": "auto",
+            "forecast_days": days
+        }
+
+        try:
+            res = await cls._send_request(
+                cls.BASE_URL,
+                params=params,
+                timeout=5.0,
+            )
+
+            data = res.get("daily", {})
+            dates = data.get("time", [])
+
+            result = []
+            for i in range(len(dates)):
+                result.append({
+                    "date": dates[i],
+                    "max_temp": data["temperature_2m_max"][i],
+                    "min_temp": data["temperature_2m_min"][i],
+                    "max_apparent": data["apparent_temperature_max"][i],
+                    "min_apparent": data["apparent_temperature_min"][i],
+                    "weather_code": data["weather_code"][i],
+                    "precipitation": data["precipitation_sum"][i],
+                    "wind_speed": data["wind_speed_10m_max"][i]
+                })
+
+            return result
+
+        except HTTPException:
+            raise
+        
         except Exception as e:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

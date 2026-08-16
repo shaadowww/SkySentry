@@ -26,10 +26,10 @@ router = APIRouter(
     tags=["Weather"]
 )
 
-
 class CityWeatherResponse(BaseModel):
     city_name: str
     weather: CurrentWeatherResponse
+
 
 @router.get("/now/{telegram_id}", response_model=CurrentWeatherResponse, response_model_by_alias=False)
 async def get_weather_now(
@@ -120,3 +120,33 @@ async def get_weather_forecast(
     )
 
     return forecast_data
+
+@router.get("/forecast/range/{telegram_id}")
+async def get_weather_forecast_range(
+    telegram_id: int,
+    days: int = Query(7, ge=1, le=16, description="Number of days (1 to 16)"),
+    session: AsyncSession = Depends(provide_session)
+):
+    """Receive daily forecast for specified number of days"""
+
+    location = await get_user_location(
+        session, 
+        telegram_id
+    )
+
+    if not location:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User location not set. Please set your city first."
+        )
+
+    forecast_data = await WeatherClient.get_daily_forecast_range(
+        latitude=location.latitude,
+        longitude=location.longitude,
+        days=days
+    )
+
+    return {
+        "city_name": location.city_name,
+        "forecast": forecast_data
+    }
