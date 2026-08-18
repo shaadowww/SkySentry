@@ -1,14 +1,23 @@
-import datetime
 from aiogram.types import (
     ReplyKeyboardMarkup, 
     KeyboardButton, 
-    InlineKeyboardButton, 
     InlineKeyboardMarkup,
 )
 
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from aiogram.fsm.context import FSMContext
 from bot.states import *
+
+def choose_the_city() -> ReplyKeyboardMarkup:
+    """Choosing the ciy"""
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="📍 Share Location", request_location=True)],
+            [KeyboardButton(text="⏭️ Skip")],
+            [KeyboardButton(text="❌ Cancel schedule setup")]
+        ],
+        resize_keyboard=True,
+        one_time_keyboard=True,
+    )
 
 def share_location() -> ReplyKeyboardMarkup:
     """

@@ -3,9 +3,8 @@ from fastapi import HTTPException, status
 from pydantic import BaseModel, Field
 
 class GeoCodingModel(BaseModel):
-    """
-    GeoCoding Schema for parsing specified city
-    """
+    """GeoCoding Schema for parsing specified city"""
+
     city_id: int = Field(..., alias="id")
     city_name: str = Field(..., alias="name")
     latitude: float = Field(..., alias="latitude")
@@ -93,12 +92,12 @@ class GeoCodingClient:
                 received_data = response.json()
             else:
                 async with httpx.AsyncClient() as backup_client:
-                    response = await cls.client.get(
-                    cls.REVERSE_GEOCODING_URL,
-                    params=params,
-                    headers=headers,
-                    timeout=5
-                )
+                    response = await backup_client.get(
+                        cls.REVERSE_GEOCODING_URL,
+                        params=params,
+                        headers=headers,
+                        timeout=5
+                    )
                     response.raise_for_status()
                     received_data = response.json()
 

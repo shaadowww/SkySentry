@@ -34,6 +34,8 @@ class Schedules(Base):
     id: Mapped[int_pk]
     telegram_id: Mapped[int] = mapped_column(ForeignKey("users.telegram_id"))
     city: Mapped[str]
+    latitude: Mapped[float | None] = mapped_column(nullable=True)
+    longitude: Mapped[float | None] = mapped_column(nullable=True)
     time: Mapped[time]
     timezone: Mapped[str] = mapped_column(
         default="UTC"

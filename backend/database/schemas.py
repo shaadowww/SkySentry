@@ -25,6 +25,8 @@ class UserUpdate(UserBase):
 class ScheduleBase(BaseModel):
     telegram_id: int
     city: str
+    latitude: float | None = None
+    longitude: float | None = None
     time: datetime.time
     timezone: str = "UTC"
     
@@ -40,6 +42,8 @@ class ScheduleRead(ScheduleBase):
 class ScheduleUpdate(BaseModel):
     city: str | None = None
     time: datetime.time | None = None
+    latitude: float | None = None
+    longitude: float | None = None
     timezone: str | None = None
     is_active: bool | None = None
 

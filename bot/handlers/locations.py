@@ -19,7 +19,7 @@ async def _initiate_city_setup(target_message: Message, state: FSMContext):
     city_setup_text = (
         "Please enter your city name <b>(e.g., Odesa, London)</b>\n"\
         "<i>Also you can share your location via <b>Telegram GeoPoint</b> sending</i>\n"\
-        "or use \'<b>Share Location</b>\' button"
+        "<i>or use \'<b>Share Location</b>\' button</i>"
     )
 
     await target_message.answer(

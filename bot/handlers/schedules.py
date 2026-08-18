@@ -35,21 +35,19 @@ async def _initiate_schedule_create(target_message: Message, state: FSMContext, 
         user_longitude=longitude
     )
 
-    await state.set_state(SetupStates.waiting_for_time)
+    await state.set_state(SetupStates.schedule_choosing_the_city)
 
     await target_message.answer(
-        f"📍 City detected: <b>{city_name}</b>.\n\n"
-        f"Please enter the time you want to receive daily weather updates "
-        f"in <b>HH:MM</b> format (24-hour clock, e.g., 08:00 or 22:30):",
-        reply_markup=cancel_keyboard(),
+        f"📍 Default City detected: <b>{city_name}</b>.\n\n"
+        "⏭️ <i>If you want to leave this location and schedule on it - skip it</i>\n" \
+        "<i>Otherwise, you can send the name of a city or location by sending it Telegram Geopoint or using the 'Share Location' button below.</i>",
+        reply_markup=choose_the_city(),
         parse_mode="HTML"
     )
 
 @router.message(Command('set_schedule'))
 async def set_schedule(msg: Message, state: FSMContext):
     """Create Schedule Handler"""
-    assert msg.from_user is not None
-
     await _initiate_schedule_create(msg, state, msg.from_user.id)
 
 @router.callback_query(F.data == "add_schedule")
@@ -81,7 +79,7 @@ async def remove_schedule_callback(callback: CallbackQuery, state: FSMContext):
     indexes_list = list(schedules.keys())
 
     await callback.message.edit_text(
-        "<i><b>Select the schedule number you want to delete</b></i>\n\n"
+        "❌ <i><b>Select the schedule number you want to delete</b></i>\n\n"
         f"{schedules_list}",
         reply_markup=user_schedules_buttons(indexes_list),
         parse_mode="HTML"
@@ -129,7 +127,16 @@ async def remove_schedule(callback: CallbackQuery, state: FSMContext):
 async def cancel_schedule(msg: Message, state: FSMContext):
     await state.clear()
     await msg.answer(
-        "Schedule setup canceled.", reply_markup=ReplyKeyboardRemove()
+        "Schedule setup canceled.", 
+        reply_markup=ReplyKeyboardRemove(),
+    )
+
+@router.message(SetupStates.schedule_choosing_the_city, F.text == "❌ Cancel schedule setup")
+async def cancel_schedule(msg: Message, state: FSMContext):
+    await state.clear()
+    await msg.answer(
+        "Schedule setup canceled.", 
+        reply_markup=ReplyKeyboardRemove(),
     )
 
 @router.callback_query(SetupStates.delete_schedule, F.data == "schedule_delete_cancel")
@@ -159,9 +166,9 @@ async def process_time_input(msg: Message, state: FSMContext):
         return
     
     fsm_data = await state.get_data()
-    city_name = fsm_data.get("city")
-    latitude = fsm_data.get("user_latitude")
-    longitude = fsm_data.get("user_longitude")
+    city_name: str = fsm_data.get("city")
+    latitude: float = fsm_data.get("user_latitude")
+    longitude: float = fsm_data.get("user_longitude")
 
     await msg.answer(
         "Saving your automated schedule... ⏳",
@@ -173,7 +180,9 @@ async def process_time_input(msg: Message, state: FSMContext):
         msg.from_user.id,
         city_name,
         time_str,
-        timezone=user_timezone if user_timezone else "UTC"
+        timezone=user_timezone if user_timezone else "UTC",
+        latitude=latitude,
+        longitude=longitude,
     )
     
     if schedule_data is None:
@@ -191,10 +200,87 @@ async def process_time_input(msg: Message, state: FSMContext):
 
     await msg.answer(
         f"✅ <b>SkySentry Schedule Active!</b>\n\n"
-        f"🗺️ Destination: <b>{city_name}</b>\n"
+        f"🗺️ Destination: <b>{city_name.capitalize()}</b>\n"
         f"⏰ Broadcast Time: <b>{time_str} {user_timezone}</b>\n\n"
         f"You will now automatically receive weather forecasts at this exact time everyday.",
         parse_mode="HTML"
     )
 
     await state.clear()
+
+@router.message(SetupStates.schedule_choosing_the_city, F.text == "⏭️ Skip")
+async def skip_the_schedule_choosing_city(msg: Message, state: FSMContext):
+    fsm_data = await state.get_data()
+
+    city = fsm_data.get("city")
+    await state.set_state(SetupStates.waiting_for_time)
+    
+    await msg.answer(
+        f"✅ Selected city: <b>{city.capitalize()}</b>\n\n"
+        "⏰ Please enter the time for the broadcast in <b>HH:MM</b> format (e.g., <code>08:00</code>):",
+        reply_markup=cancel_keyboard(),
+        parse_mode="HTML"
+    )
+
+@router.message(SetupStates.schedule_choosing_the_city, F.text)
+async def schedule_choosing_the_city_text(msg: Message, state: FSMContext):
+    city_query = msg.text.strip()
+
+    city_resolve = await APIClient.resolve_city_or_coordinates(city_name=city_query)
+
+    if city_resolve is None or city_resolve.get("error") == "city_not_found":
+        await msg.answer(
+            f"❌ City <b>{city_query}</b> was not found.\n"
+            "Please check the spelling or send a Telegram GeoPoint:",
+            parse_mode="HTML"
+        )
+        return
+
+    resolved_city = city_resolve.get("city_name") or city_query
+    lat = city_resolve.get("latitude")
+    lng = city_resolve.get("longitude")
+
+    await state.update_data(
+        city=resolved_city,
+        user_latitude=lat,
+        user_longitude=lng,
+    )
+    await state.set_state(SetupStates.waiting_for_time)
+
+    await msg.answer(
+        f"✅ Selected city: <b>{resolved_city.capitalize()}</b>\n\n"
+        "⏰ Please enter the time for the broadcast in <b>HH:MM</b> format (e.g., <code>08:00</code>):",
+        reply_markup=cancel_keyboard(),
+        parse_mode="HTML"
+    )
+
+@router.message(SetupStates.schedule_choosing_the_city, F.location)
+async def schedule_choosing_the_city_location(msg: Message, state: FSMContext):
+    await state.update_data({})
+    lat = msg.location.latitude
+    lng = msg.location.longitude
+
+    coordinates = await APIClient.resolve_city_or_coordinates(latitude=lat, longitude=lng)
+    if coordinates is None or coordinates.get("error") == "city_not_found":
+        await msg.answer(
+            f"❌ Could not determine location from coordinates.\n"
+            "Try entering city name manually:",
+        )
+        return
+
+    resolved_city = coordinates.get("city_name")
+
+    await state.update_data(
+        city=resolved_city,
+        user_latitude=lat,
+        user_longitude=lng,
+    )
+
+    await state.set_state(SetupStates.waiting_for_time)
+
+    await msg.answer(
+        f"✅ Location detected: <b>{resolved_city.capitalize()}</b>\n\n"
+        "⏰ Please enter the time for the broadcast in <b>HH:MM</b> format (e.g., <code>08:30</code>):",
+        reply_markup=cancel_keyboard(),
+        parse_mode="HTML"
+    )

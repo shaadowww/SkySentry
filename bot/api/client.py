@@ -42,7 +42,11 @@ class APIClient:
                 return response.status_code == 200
             
         except httpx.RequestError as e:
-            logger.error(f"Backend connection error while upsert_user was executing: {str(e)}")
+            logger.error(f"Backend connection error while upsert_user executing: {str(e)}")
+            return None
+        
+        except Exception as e:
+            logger.error(f"An unexpected error occured while upsert_user executing: {str(e)}")
             return None
             
             
@@ -90,8 +94,13 @@ class APIClient:
                 elif response.status_code == 404:
                     return {"error": "not found"}
                 return None
+            
         except httpx.RequestError as e:
             logger.error(f"Backend connection error while set_location executing: {str(e)}")
+            return None
+        
+        except Exception as e:
+            logger.error(f"An unexpected error occured while set_location executing: {str(e)}")
             return None
             
     @classmethod
@@ -125,14 +134,28 @@ class APIClient:
         except httpx.RequestError as e:
             logger.error(f"Backend connection error while get_location executing: {str(e)}")
             return None
+        
+        except Exception as e:
+            logger.error(f"An unexpected error occured while get_location executing: {str(e)}")
+            return None
 
     @classmethod
-    async def create_schedule(cls, telegram_id: int, city: str, time_str: str, timezone: str) -> dict | None:
+    async def create_schedule(
+        cls, 
+        telegram_id: int, 
+        city: str, 
+        time_str: str, 
+        timezone: str,
+        latitude: float | None = None,
+        longitude: float | None = None,
+    ) -> dict | None:
         """Set User Schedule"""
 
         payload = {
             "telegram_id" : telegram_id,
             "city": city,
+            "latitude": latitude,
+            "longitude": longitude,
             "time": time_str,
             "timezone": timezone,
             "is_active": True
@@ -162,10 +185,17 @@ class APIClient:
 
                 if response.status_code == 200:
                     return response.json()
+                if response.status_code == 400:
+                    return {"error": "schedule already exists"}
+                
                 return None
             
         except httpx.RequestError as e:
             logger.error(f"Backend connection error while create_schedule executing: {str(e)}")
+            return None
+        
+        except Exception as e:
+            logger.error(f"An unexpected error occured while create_schedule executing: {str(e)}")
             return None
         
     @classmethod
@@ -198,6 +228,10 @@ class APIClient:
 
         except httpx.RequestError as e:
             logger.error(f"Backend connection error while get_user_schedules executing: {str(e)}")
+            return None
+        
+        except Exception as e:
+            logger.error(f"An unexpected error occured while get_user_schedules executing: {str(e)}")
             return None
 
     @classmethod
@@ -235,7 +269,11 @@ class APIClient:
                 return True
 
         except httpx.RequestError as e:
-            logger.error(f"Backend connection error while remove_user_schedule executing: {str(e)}")
+            logger.error(f"Backend connection error while remove_user_schedules executing: {str(e)}")
+            return None
+        
+        except Exception as e:
+            logger.error(f"An unexpected error occured while remove_user_schedules executing: {str(e)}")
             return None
 
 
@@ -271,6 +309,11 @@ class APIClient:
         except httpx.RequestError as e:
             logger.error(f"Backend connection error while get_weather_now executing: {str(e)}")
             return None
+        
+        except Exception as e:
+            logger.error(f"An unexpected error occured while get_weather_now executing: {str(e)}")
+            return None
+    
 
     @classmethod
     async def get_weather_now_by_city_or_coordinates(
@@ -322,10 +365,11 @@ class APIClient:
                 return None
             
         except httpx.RequestError as e:
-            logger.error(f"Backend connection error while get_weather_now executing: {str(e)}")
+            logger.error(f"Backend connection error while get_weather_now_by_city_or_coordinates executing: {str(e)}")
             return None
+        
         except Exception as e:
-            logger.error(f"Error fetching weather by city/coords: {e}")
+            logger.error(f"An unexpected error occured while get_weather_now_by_city_or_coordinates executing: {str(e)}")
             return None
         
     
@@ -363,26 +407,91 @@ class APIClient:
                 return None
             
         except httpx.RequestError as e:
-            logger.error(f"Backend connection error while get_weather_now executing: {str(e)}")
+            logger.error(f"Backend connection error while daily_weather_forecast executing: {str(e)}")
+            return None
+        
+        except Exception as e:
+            logger.error(f"An unexpected error occured while daily_weather_forecast executing: {str(e)}")
             return None
 
     @classmethod
     async def get_forecast_range(cls, telegram_id: int, days: int = 7) -> dict | None:
         """Receive forecast for a range of days"""
 
-        url = f"{settings.BACKEND_URL}/weather/forecast/range/{telegram_id}"
         params = {"days": days}
 
         try:
             if cls.client and not cls.client.is_closed:
-                response = await cls.client.get(url, params=params, timeout=5.0)
+                response = await cls.client.get(
+                    f"{settings.BACKEND_URL}/weather/forecast/range/{telegram_id}", 
+                    params=params, 
+                    timeout=5.0
+                )
                 return response.json() if response.status_code == 200 else None
 
             async with httpx.AsyncClient() as backup_client:
-                response = await backup_client.get(url, params=params, timeout=5.0)
+                response = await backup_client.get(
+                    f"{settings.BACKEND_URL}/weather/forecast/range/{telegram_id}", 
+                    params=params, 
+                    timeout=5.0
+                )
                 return response.json() if response.status_code == 200 else None
 
+        except httpx.RequestError as e:
+            logger.error(f"Backend connection error while get_forecast_range executing: {str(e)}")
+            return None
+        
         except Exception as e:
-            logger.error(f"Error fetching forecast range: {e}")
+            logger.error(f"An unexpected error occured while get_forecast_range executing: {str(e)}")
+            return None
 
-        return None
+    @classmethod
+    async def resolve_city_or_coordinates(
+        cls,
+        city_name: str | None = None,
+        latitude: float | None = None,
+        longitude: float | None = None,
+    ) -> dict | str:
+        raw_params = {
+            "city_name": city_name,
+            "latitude": latitude,
+            "longitude": longitude,
+        }
+
+        params = {
+            k: v for k, v in raw_params.items()
+            if v is not None 
+        }
+
+        try:
+            if cls.client and not cls.client.is_closed:
+                response = await cls.client.get(
+                    f"{settings.BACKEND_URL}/geocoding/resolve",
+                    params=params,
+                    timeout=5.0,
+                )
+
+                if response.status_code == 200:
+                    return response.json()
+                elif response.status_code == 404:
+                    return {"error": "city_not_found"}
+
+            async with httpx.AsyncClient() as backup_client:
+                response = await backup_client.get(
+                    f"{settings.BACKEND_URL}/geocoding/resolve",
+                    params=params,
+                    timeout=5.0,
+                )
+                
+                if response.status_code == 200:
+                    return response.json()
+                elif response.status_code == 404:
+                    return {"error": "city_not_found"}
+
+        except httpx.RequestError as e:
+            logger.error(f"Backend connection error while resolve_city_or_coordinates executing: {str(e)}")
+            return None
+        
+        except Exception as e:
+            logger.error(f"An unexpected error occured while resolve_city_or_coordinates executing: {str(e)}")
+            return None

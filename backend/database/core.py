@@ -1,6 +1,6 @@
 # Database Query Functions
 import datetime
-from sqlalchemy import select, delete, and_
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend.database.models import Users, Locations, Schedules
 from backend.database.schemas import UserCreate, UserRead, ScheduleCreate, ScheduleRead, LocationCreate, LocationRead
@@ -100,7 +100,6 @@ async def remove_user_schedule(
     ) -> bool:
     """Removes the specified schedule from the database"""
     
-    # TODO дописать функцию удаления расписания с бд
     stmt = (
         delete(Schedules)
         .where(
