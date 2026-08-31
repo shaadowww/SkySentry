@@ -1,0 +1,62 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: skysentry_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-weather_user}
+      POSTGRES_PASSWORD: ${DB_PASS:-secret_password}
+      POSTGRES_DB: ${DB_NAME:-weatherbot}
+    volumes:
+      - "postgres_data:/var/lib/postgresql/data"
+    ports:
+      - "127.0.0.1:5432:5432"
+    networks:
+      - skysentry_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-weather_user} -d ${DB_NAME:-weatherbot}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: .
+    container_name: skysentry_backend
+    restart: unless-stopped
+    command: >
+      sh -c "alembic upgrade head &&
+            uvicorn backend.main:app --host 0.0.0.0 --port 8000"
+    env_file:
+      - .env
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DATABASE_URL=postgresql+asyncpg://${DB_USERNAME:-weather_user}:${DB_PASS:-secret_password}@db:5432/${DB_NAME:-weatherbot}
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - skysentry_net
+    
+  bot:
+    build: .
+    container_name: skysentry_bot
+    restart: unless-stopped
+    command: python -m bot.main
+    env_file:
+      - .env
+    environment:
+      - BACKEND_URL=http://backend:8000/api/v1
+    depends_on:
+      - backend
+    networks:
+      - skysentry_net
+
+volumes:
+  postgres_data:
+
+networks:
+  skysentry_net:
+    driver: bridge
